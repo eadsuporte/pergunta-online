@@ -10,7 +10,7 @@ require_once __DIR__ . "/bootstrap.php";
  */
 function mcp_base_url(): string {
     global $appconfig;
-    $url = rtrim((string)($appconfig["app_url"] ?? ""), "/");
+    $url = rtrim((string)((($appconfig["app_url"] ?? "") ?: "https://pergunta-online.diegoramos.tech")), "/");
     if (!preg_match("~^https://[^/]+(?:/.*)?$~i", $url)) {
         throw new RuntimeException("Configure app_url com uma URL HTTPS publica antes de habilitar o MCP.");
     }
@@ -249,11 +249,10 @@ function mcp_oauth_token(): never {
             if (!preg_match("/^[A-Za-z0-9._~-]{43,128}$/", $verifier)) {
                 throw new InvalidArgumentException("invalid_grant");
             }
-            $stmt = $pdo->prepare("SELECT * FROM mcp_oauth_codes WHERE code_hash=? FOR UPDATE");
+            $stmt = $pdo->prepare("SELECT * FROM mcp_oauth_codes WHERE code_hash=? AND expires_at>NOW() FOR UPDATE");
             $stmt->execute([hash("sha256", $code)]);
             $record = $stmt->fetch();
-            if (!$record || $record["client_id"] !== $clientId || $record["redirect_uri"] !== $redirect ||
-                strtotime((string)$record["expires_at"]) <= time()) {
+            if (!$record || $record["client_id"] !== $clientId || $record["redirect_uri"] !== $redirect) {
                 throw new InvalidArgumentException("invalid_grant");
             }
             $expected = rtrim(strtr(base64_encode(hash("sha256", $verifier, true)), "+/", "-_"), "=");
@@ -263,10 +262,10 @@ function mcp_oauth_token(): never {
             $pdo->prepare("DELETE FROM mcp_oauth_codes WHERE code_hash=?")->execute([hash("sha256", $code)]);
         } elseif ($grant === "refresh_token") {
             $token = (string)($_POST["refresh_token"] ?? "");
-            $stmt = $pdo->prepare("SELECT * FROM mcp_oauth_tokens WHERE token_hash=? AND token_type='refresh' FOR UPDATE");
+            $stmt = $pdo->prepare("SELECT * FROM mcp_oauth_tokens WHERE token_hash=? AND token_type='refresh' AND expires_at>NOW() FOR UPDATE");
             $stmt->execute([hash("sha256", $token)]);
             $record = $stmt->fetch();
-            if (!$record || $record["client_id"] !== $clientId || strtotime((string)$record["expires_at"]) <= time()) {
+            if (!$record || $record["client_id"] !== $clientId) {
                 throw new InvalidArgumentException("invalid_grant");
             }
             $pdo->prepare("DELETE FROM mcp_oauth_tokens WHERE token_hash=?")->execute([hash("sha256", $token)]);
@@ -298,6 +297,14 @@ function mcp_oauth_token(): never {
 function mcp_oauth_actor(string $requiredScope): array {
     mcp_oauth_schema();
     $auth = (string)($_SERVER["HTTP_AUTHORIZATION"] ?? ($_SERVER["REDIRECT_HTTP_AUTHORIZATION"] ?? ""));
+    if ($auth === "" && function_exists("getallheaders")) {
+        foreach ((array)getallheaders() as $name => $value) {
+            if (strcasecmp((string)$name, "Authorization") === 0) {
+                $auth = (string)$value;
+                break;
+            }
+        }
+    }
     if (!preg_match("/^Bearer\\s+([A-Za-z0-9_-]{43,128})$/i", trim($auth), $matches)) {
         mcp_oauth_challenge();
     }
