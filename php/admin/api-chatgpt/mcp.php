@@ -34,7 +34,6 @@ function mcp_tool(string $name, string $description, array $schema, bool $readon
 }
 
 function mcp_tools(): array {
-    $empty = ["type" => "object", "properties" => new stdClass()];
     $text = ["type" => "string"];
     $evidence = [
         "type" => "object",
@@ -274,7 +273,7 @@ if (!is_array($request) || array_is_list($request) ||
 $id = $request["id"] ?? null;
 $rpcMethod = $request["method"];
 $params = $request["params"] ?? [];
-if (!is_array($params) || array_is_list($params)) {
+if (!is_array($params) || ($params !== [] && array_is_list($params))) {
     mcp_rpc_error($id, -32602, "Invalid params.");
 }
 if (!array_key_exists("id", $request)) {
@@ -305,7 +304,7 @@ if ($rpcMethod === "tools/list") {
 if ($rpcMethod === "tools/call") {
     $name = (string)($params["name"] ?? "");
     $args = $params["arguments"] ?? [];
-    if (!is_array($args) || array_is_list($args)) {
+    if (!is_array($args) || ($args !== [] && array_is_list($args))) {
         mcp_rpc_error($id, -32602, "Tool arguments must be an object.");
     }
     $tool = mcp_find_tool($name);

@@ -4,17 +4,17 @@ O Pergunta.Online expõe um servidor MCP remoto **Streamable HTTP** implementado
 
 ## Configuração
 
-Configure **app_url** em `php/config.php` com o endereço público HTTPS real da instalação (por exemplo, `https://pergunta-online.diegoramos.tech`). A implantação deve servir a pasta `php/` como document root e habilitar o `mod_rewrite` do Apache. O endereço do servidor MCP é:
+Configure **app_url** em `php/config.php` com o endereço público HTTPS da instalação: `https://pergunta-online.diegoramos.tech`. A implantação deve servir a pasta `php/` como document root e habilitar o `mod_rewrite` do Apache. O endereço do servidor MCP é:
 
 ```text
-https://SEU-DOMINIO/mcp
+https://pergunta-online.diegoramos.tech/mcp
 ```
 
 Os endpoints de descoberta, em conformidade com OAuth 2.1/MCP, são:
 
 ```text
-https://SEU-DOMINIO/.well-known/oauth-authorization-server
-https://SEU-DOMINIO/.well-known/oauth-protected-resource
+https://pergunta-online.diegoramos.tech/.well-known/oauth-authorization-server
+https://pergunta-online.diegoramos.tech/.well-known/oauth-protected-resource
 ```
 
 O servidor fornece registro dinâmico de cliente (`/oauth/register`), autorização com conta administrativa (`/oauth/authorize`), PKCE S256, access tokens de uma hora e refresh tokens rotativos de 30 dias (`/oauth/token`). Tokens e códigos são armazenados exclusivamente como SHA-256 no banco, em tabelas `mcp_oauth_*` criadas automaticamente na primeira utilização. Clientes somente podem registrar URLs de redirecionamento HTTPS da OpenAI/ChatGPT. A autorização exige uma conta administrativa ativa, sessão autenticada e consentimento explícito; contas normais não podem conceder acesso.
