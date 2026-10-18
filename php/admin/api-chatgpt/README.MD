@@ -14,14 +14,14 @@ API base:
 
 https://pergunta-online.diegoramos.tech/admin/api-chatgpt/
 
-Token:
+Token (defina CHATGPT_API_TOKEN no servidor; nunca publique seu valor):
 
-pergunta-online-academico-2026-chatgpt
+SEU_TOKEN_PRIVADO
 
 Em todas as chamadas envie:
 
 ```http
-Authorization: Bearer pergunta-online-academico-2026-chatgpt
+Authorization: Bearer SEU_TOKEN_PRIVADO
 Content-Type: application/json
 ```
 
@@ -31,7 +31,7 @@ Para testar diretamente o servidor pela porta 8080, sem depender da resolução 
 curl -v \
   http://137.184.104.144:8080/admin/api-chatgpt/catalog.php \
   -H 'Host: pergunta-online.diegoramos.tech' \
-  -H 'Authorization: Bearer pergunta-online-academico-2026-chatgpt' \
+  -H 'Authorization: Bearer SEU_TOKEN_PRIVADO' \
   -H 'Content-Type: application/json'
 ```
 

@@ -112,8 +112,16 @@ function api_require_auth(): array {
     $config = is_array($appconfig['chatgpt_api'] ?? null) ? $appconfig['chatgpt_api'] : [];
 
     $provided = api_bearer_token();
-    if ($provided === '' || !hash_equals(CHATGPT_API_TOKEN_HASH, hash('sha256', $provided))) {
-        api_error('Token de API inválido.', 401);
+    $configured = trim((string)(getenv("CHATGPT_API_TOKEN") ?: ($config["token"] ?? "")));
+    // An environment/config token overrides the historical token entirely.
+    // Deploy a new secret to revoke the token exposed by older public documentation.
+    if ($configured !== "") {
+        $authenticated = $provided !== "" && hash_equals($configured, $provided);
+    } else {
+        $authenticated = $provided !== "" && hash_equals(CHATGPT_API_TOKEN_HASH, hash("sha256", $provided));
+    }
+    if (!$authenticated) {
+        api_error("Token de API inválido.", 401);
     }
 
     $actorEmail = normalize_email((string)(getenv('CHATGPT_API_ACTOR_EMAIL') ?: ($config['actor_email'] ?? '')));

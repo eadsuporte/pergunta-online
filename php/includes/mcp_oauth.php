@@ -217,10 +217,11 @@ function mcp_oauth_issue_tokens(string $clientId, int $userId, string $scope): a
     $access = mcp_random_token();
     $refresh = mcp_random_token();
     $stmt = db()->prepare("INSERT INTO mcp_oauth_tokens
-        (token_hash,token_type,client_id,user_id,scope,expires_at)
-        VALUES (?,?,?,?,?,DATE_ADD(NOW(), INTERVAL ? SECOND))");
-    $stmt->execute([hash("sha256", $access), "access", $clientId, $userId, $scope, 3600]);
-    $stmt->execute([hash("sha256", $refresh), "refresh", $clientId, $userId, $scope, 2592000]);
+        (token_hash,token_type,client_id,user_id,scope,resource,expires_at)
+        VALUES (?,?,?,?,?,?,DATE_ADD(NOW(), INTERVAL ? SECOND))");
+    $resource = mcp_base_url() . "/mcp";
+    $stmt->execute([hash("sha256", $access), "access", $clientId, $userId, $scope, $resource, 3600]);
+    $stmt->execute([hash("sha256", $refresh), "refresh", $clientId, $userId, $scope, $resource, 2592000]);
     return [
         "access_token" => $access, "token_type" => "Bearer", "expires_in" => 3600,
         "refresh_token" => $refresh, "scope" => $scope,
@@ -234,6 +235,10 @@ function mcp_oauth_token(): never {
     mcp_oauth_schema();
     $grant = (string)($_POST["grant_type"] ?? "");
     $clientId = (string)($_POST["client_id"] ?? "");
+    $resource = (string)($_POST["resource"] ?? "");
+    if ($resource !== "" && $resource !== mcp_base_url() . "/mcp") {
+        mcp_oauth_error("invalid_target");
+    }
     $check = db()->prepare("SELECT client_id FROM mcp_oauth_clients WHERE client_id=?");
     $check->execute([$clientId]);
     if (!$check->fetchColumn()) {
@@ -311,8 +316,8 @@ function mcp_oauth_actor(string $requiredScope): array {
     $stmt = db()->prepare("SELECT t.scope,u.id,u.name,u.email,u.role
         FROM mcp_oauth_tokens t JOIN users u ON u.id=t.user_id
         WHERE t.token_hash=? AND t.token_type='access' AND t.expires_at>NOW()
-          AND u.role='admin' AND u.active=1 LIMIT 1");
-    $stmt->execute([hash("sha256", $matches[1])]);
+          AND t.resource=? AND u.role='admin' AND u.active=1 LIMIT 1");
+    $stmt->execute([hash("sha256", $matches[1]), mcp_base_url() . "/mcp"]);
     $actor = $stmt->fetch();
     if (!$actor) {
         mcp_oauth_challenge();

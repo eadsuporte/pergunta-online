@@ -336,6 +336,14 @@ function run_schema_migrations(PDO $pdo): void {
         $version = 6;
     }
 
+    if ($version < 7) {
+        migration_add_column($pdo, "mcp_oauth_tokens", "resource",
+            "VARCHAR(1000) NOT NULL DEFAULT '' AFTER scope");
+        $pdo->exec("INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','7')
+            ON DUPLICATE KEY UPDATE meta_value=VALUES(meta_value)");
+        $version = 7;
+    }
+
 }
 
 function migration_add_column(PDO $pdo, string $table, string $column, string $definition): void {

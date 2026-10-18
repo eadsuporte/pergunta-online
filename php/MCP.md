@@ -17,9 +17,9 @@ https://pergunta-online.diegoramos.tech/.well-known/oauth-authorization-server
 https://pergunta-online.diegoramos.tech/.well-known/oauth-protected-resource
 ```
 
-O servidor fornece registro dinâmico de cliente (`/oauth/register`), autorização com conta administrativa (`/oauth/authorize`), PKCE S256, access tokens de uma hora e refresh tokens rotativos de 30 dias (`/oauth/token`). Tokens e códigos são armazenados exclusivamente como SHA-256 no banco, em tabelas `mcp_oauth_*` criadas automaticamente na primeira utilização. Clientes somente podem registrar URLs de redirecionamento HTTPS da OpenAI/ChatGPT. A autorização exige uma conta administrativa ativa, sessão autenticada e consentimento explícito; contas normais não podem conceder acesso.
+O servidor fornece registro dinâmico de cliente (`/oauth/register`), autorização com conta administrativa (`/oauth/authorize`), PKCE S256, vinculação de tokens ao recurso `https://pergunta-online.diegoramos.tech/mcp`, access tokens de uma hora e refresh tokens rotativos de 30 dias (`/oauth/token`). Tokens e códigos são armazenados exclusivamente como SHA-256 no banco, em tabelas `mcp_oauth_*` criadas automaticamente na primeira utilização. Clientes somente podem registrar URLs de redirecionamento HTTPS da OpenAI/ChatGPT. A autorização exige uma conta administrativa ativa, sessão autenticada e consentimento explícito; contas normais não podem conceder acesso.
 
-Não utilize na integração MCP o token fixo da API REST antiga, que tem outro propósito. Nenhuma senha, token ou segredo deve ser inserido no repositório.
+Não utilize na integração MCP o token da API REST antiga, que tem outro propósito. A documentação REST antiga expunha um token conhecido: **configure imediatamente `CHATGPT_API_TOKEN` com um segredo aleatório novo no servidor** para invalidar a chave histórica. A configuração `chatgpt_api.token` também é aceita, mas prefira variável de ambiente. Enquanto nenhum novo token for configurado, a aplicação preserva o token histórico apenas por compatibilidade, o que não é seguro em produção. Nenhuma senha, token ou segredo deve ser inserido no repositório.
 
 ## Vincular ao ChatGPT
 
