@@ -31,37 +31,8 @@ function mcp_oauth_error(string $error, int $status = 400): never {
 }
 
 function mcp_oauth_schema(): void {
-    static $ready = false;
-    if ($ready) {
-        return;
-    }
-    $pdo = db();
-    $pdo->exec("CREATE TABLE IF NOT EXISTS mcp_oauth_clients (
-        client_id VARCHAR(128) PRIMARY KEY,
-        client_name VARCHAR(190) NOT NULL,
-        redirect_uris TEXT NOT NULL,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-    $pdo->exec("CREATE TABLE IF NOT EXISTS mcp_oauth_codes (
-        code_hash CHAR(64) PRIMARY KEY,
-        client_id VARCHAR(128) NOT NULL,
-        user_id BIGINT UNSIGNED NOT NULL,
-        redirect_uri VARCHAR(1000) NOT NULL,
-        code_challenge VARCHAR(128) NOT NULL,
-        scope VARCHAR(100) NOT NULL,
-        expires_at DATETIME NOT NULL,
-        INDEX idx_mcp_codes_expiry (expires_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-    $pdo->exec("CREATE TABLE IF NOT EXISTS mcp_oauth_tokens (
-        token_hash CHAR(64) PRIMARY KEY,
-        token_type VARCHAR(10) NOT NULL,
-        client_id VARCHAR(128) NOT NULL,
-        user_id BIGINT UNSIGNED NOT NULL,
-        scope VARCHAR(100) NOT NULL,
-        expires_at DATETIME NOT NULL,
-        INDEX idx_mcp_tokens_expiry (expires_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-    $ready = true;
+    // db() runs the versioned database migrations during initialization.
+    db();
 }
 
 function mcp_random_token(): string {

@@ -299,6 +299,43 @@ function run_schema_migrations(PDO $pdo): void {
         $upsert->execute();
         $version = 5;
     }
+
+    if ($version < 6) {
+        // OAuth credentials must be provisioned once by the versioned migration,
+        // not through CREATE TABLE on each MCP tool invocation.
+        $pdo->exec("CREATE TABLE IF NOT EXISTS mcp_oauth_clients (
+            client_id VARCHAR(128) PRIMARY KEY,
+            client_name VARCHAR(190) NOT NULL,
+            redirect_uris TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS mcp_oauth_codes (
+            code_hash CHAR(64) PRIMARY KEY,
+            client_id VARCHAR(128) NOT NULL,
+            user_id BIGINT UNSIGNED NOT NULL,
+            redirect_uri VARCHAR(1000) NOT NULL,
+            code_challenge VARCHAR(128) NOT NULL,
+            scope VARCHAR(100) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            INDEX idx_mcp_codes_expiry (expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS mcp_oauth_tokens (
+            token_hash CHAR(64) PRIMARY KEY,
+            token_type VARCHAR(10) NOT NULL,
+            client_id VARCHAR(128) NOT NULL,
+            user_id BIGINT UNSIGNED NOT NULL,
+            scope VARCHAR(100) NOT NULL,
+            expires_at DATETIME NOT NULL,
+            INDEX idx_mcp_tokens_expiry (expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $pdo->exec("INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','6')
+            ON DUPLICATE KEY UPDATE meta_value=VALUES(meta_value)");
+        $version = 6;
+    }
+
 }
 
 function migration_add_column(PDO $pdo, string $table, string $column, string $definition): void {
