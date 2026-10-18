@@ -1,0 +1,19 @@
+{{>partials/site_header}}
+<section class="panel" style="max-width:640px;margin:40px auto;padding:32px">
+    <h1>Conectar ao ChatGPT</h1>
+    <p><strong>{{client_name}}</strong> solicitou acesso à sua conta administrativa do Pergunta.Online.</p>
+    <p class="muted">Retorno autorizado para: {{redirect_uri}}</p>
+    <p>Permissões solicitadas:</p>
+    <ul>
+        {{#scope_read}}<li>Consultar perguntas, evidências, focos, categorias e destinatários, incluindo itens não publicados.</li>{{/scope_read}}
+        {{#scope_write}}<li>Criar perguntas, importar lotes, cadastrar entidades e adicionar evidências. Essas ações modificam o banco de dados.</li>{{/scope_write}}
+    </ul>
+    <p>A autorização pode permitir que o ChatGPT execute ações administrativas em seu nome. Autorize apenas um cliente que você reconheça.</p>
+    <form method="post" action="{{form_action}}">
+        <input type="hidden" name="csrf_token" value="{{csrf_token}}">
+        <input type="hidden" name="nonce" value="{{nonce}}">
+        <button class="button primary" type="submit" name="decision" value="approve">Autorizar acesso</button>
+        <button class="button ghost" type="submit" name="decision" value="deny">Negar</button>
+    </form>
+</section>
+{{>partials/site_footer}}

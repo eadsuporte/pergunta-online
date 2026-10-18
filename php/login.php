@@ -61,6 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_id'] = (int)$user['id'];
             $lastLogin = db()->prepare('UPDATE users SET last_login_at=NOW() WHERE id=?');
             $lastLogin->execute([(int)$user['id']]);
+            $mcpReturn = (string)($_SESSION["mcp_after_login"] ?? "");
+            unset($_SESSION["mcp_after_login"]);
+            if (strlen($mcpReturn) <= 4096 && str_starts_with($mcpReturn, "/oauth/authorize?")) {
+                header("Location: " . $mcpReturn, true, 303);
+                exit;
+            }
             redirect('/');
         }
         $error = 'E-mail ou senha inválidos.';

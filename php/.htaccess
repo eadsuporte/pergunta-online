@@ -7,6 +7,12 @@ Options -Indexes -MultiViews
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Expose MCP and OAuth discovery at stable public URLs.
+    RewriteRule ^mcp/?$ admin/api-chatgpt/mcp.php [END,QSA]
+    RewriteRule ^oauth/(authorize|token|register)/?$ admin/api-chatgpt/oauth.php?action=$1 [END,QSA]
+    RewriteRule ^\\.well-known/oauth-authorization-server/?$ admin/api-chatgpt/oauth.php?action=metadata [END,QSA]
+    RewriteRule ^\\.well-known/oauth-protected-resource/?$ admin/api-chatgpt/oauth.php?action=resource [END,QSA]
+
     # Canonical public URLs never expose index.php or the .php extension.
     # Use absolute URL-path substitutions here. Relative substitutions in
     # per-directory context can leak the physical filesystem path into Location.
