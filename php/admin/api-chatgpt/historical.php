@@ -205,6 +205,7 @@ function api_question_answer(array $input, array $actor): array {
         $questionId, (int)$actor['id'], 'answer_updated', $question['status'], 'answered',
         'Resposta atribuída ao usuário ' . $respondentId . ' por importação administrativa.', $answeredAt
     );
+    api_touch_user_activity($respondentId, $answeredAt);
     audit_log((int)$actor['id'], 'api.question.answered', 'question', $questionId,
         'Respondent=' . $respondentId . '; historical answered_at=' . $answeredAt);
     return [
@@ -212,4 +213,22 @@ function api_question_answer(array $input, array $actor): array {
         'answered_by_user_id' => $respondentId, 'answered_at' => $answeredAt,
         'updated_at' => $updatedAt, 'status' => 'answered',
     ];
+}
+/**
+ * Administrative attribution of historical user activity. last_login_at is
+ * treated as the latest known activity/login timestamp and never moves back.
+ * The real import instant stays in admin_audit_log.
+ */
+function api_touch_user_activity(int $userId, string $eventAt): void {
+    if ($userId < 1) {
+        throw new InvalidArgumentException('user_id inválido.');
+    }
+    $stmt = db()->prepare('SELECT created_at FROM users WHERE id=? LIMIT 1');
+    $stmt->execute([$userId]);
+    $createdAt = $stmt->fetchColumn();
+    if (!$createdAt) {
+        throw new InvalidArgumentException('Usuário não encontrado.');
+    }
+    $at = api_historical_date($eventAt, 'activity_at', (string)$createdAt);
+    user_last_activity_touch($userId, (string)$at);
 }

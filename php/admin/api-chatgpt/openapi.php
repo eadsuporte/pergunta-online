@@ -144,6 +144,9 @@ $blogPostSchema = [
             'description' => 'Compatibilidade com clientes antigos. Prefira status.',
         ],
         'published_at' => ['type' => 'string', 'format' => 'date-time'],
+        'author_user_id' => ['type' => 'integer', 'minimum' => 1],
+        'created_at' => ['type' => 'string', 'description' => 'YYYY-MM-DD HH:MM:SS, data histórica original'],
+        'updated_at' => ['type' => 'string', 'description' => 'YYYY-MM-DD HH:MM:SS, data histórica de alteração'],
         'language' => ['type' => 'string', 'default' => 'pt_BR'],
         'image' => ['$ref' => '#/components/schemas/BlogImage'],
         'image_url' => [
@@ -196,7 +199,7 @@ api_json([
     'openapi' => '3.1.0',
     'info' => [
         'title' => 'Pergunta.Online ChatGPT API',
-        'version' => '1.3.0',
+        'version' => '1.4.0',
         'description' => 'API para pesquisa assistida por ChatGPT e cadastro controlado de focos, categorias, destinatários, perguntas e evidências.',
     ],
     'servers' => [['url' => $server]],
@@ -216,6 +219,26 @@ api_json([
             'BlogSource' => $blogSourceSchema,
             'BlogImage' => $blogImageSchema,
             'BlogPost' => $blogPostSchema,
+            'Vote' => [
+                'type' => 'object',
+                'required' => ['question_id', 'user_id'],
+                'properties' => [
+                    'question_id' => ['type' => 'integer', 'minimum' => 1],
+                    'user_id' => ['type' => 'integer', 'minimum' => 1],
+                    'created_at' => ['type' => 'string'],
+                ],
+            ],
+            'Comment' => [
+                'type' => 'object',
+                'required' => ['question_id', 'user_id', 'body'],
+                'properties' => [
+                    'question_id' => ['type' => 'integer', 'minimum' => 1],
+                    'user_id' => ['type' => 'integer', 'minimum' => 1],
+                    'body' => ['type' => 'string', 'minLength' => 2],
+                    'created_at' => ['type' => 'string'],
+                    'external_id' => ['type' => 'string'],
+                ],
+            ],
         ],
     ],
     'security' => [['bearerAuth' => []]],
@@ -301,6 +324,36 @@ api_json([
                     ],
                 ],
                 'responses' => ['200' => ['description' => 'Resultado do cadastro']],
+            ],
+        ],
+        '/votes' => [
+            'post' => [
+                'operationId' => 'importVotes',
+                'summary' => 'Registra votos associados a usuários e com datas históricas, em lote de até 50.',
+                'requestBody' => ['required' => true, 'content' => ['application/json' => [
+                    'schema' => ['oneOf' => [
+                        ['$ref' => '#/components/schemas/Vote'],
+                        ['type' => 'object', 'required' => ['items'],
+                            'properties' => ['items' => ['type' => 'array', 'minItems' => 1,
+                                'maxItems' => 50, 'items' => ['$ref' => '#/components/schemas/Vote']]]],
+                    ]],
+                ]]],
+                'responses' => ['200' => ['description' => 'Votos novos ou reutilizados']],
+            ],
+        ],
+        '/comments' => [
+            'post' => [
+                'operationId' => 'importComments',
+                'summary' => 'Cria comentários atribuídos a usuários com data retroativa.',
+                'requestBody' => ['required' => true, 'content' => ['application/json' => [
+                    'schema' => ['oneOf' => [
+                        ['$ref' => '#/components/schemas/Comment'],
+                        ['type' => 'object', 'required' => ['items'],
+                            'properties' => ['items' => ['type' => 'array', 'minItems' => 1,
+                                'maxItems' => 50, 'items' => ['$ref' => '#/components/schemas/Comment']]]],
+                    ]],
+                ]]],
+                'responses' => ['200' => ['description' => 'Comentários criados ou reutilizados']],
             ],
         ],
         '/blog' => [

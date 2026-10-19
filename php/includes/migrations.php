@@ -412,6 +412,15 @@ function run_schema_migrations(PDO $pdo): void {
         $version = 10;
     }
 
+    if ($version < 11) {
+        migration_add_column($pdo, 'question_comments', 'external_id', 'VARCHAR(190) NULL AFTER body');
+        migration_add_unique_index($pdo, 'question_comments',
+            'uq_question_comments_external_id', 'external_id');
+        $pdo->exec("INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','11')
+            ON DUPLICATE KEY UPDATE meta_value=VALUES(meta_value)");
+        $version = 11;
+    }
+
 }
 
 function migration_add_column(PDO $pdo, string $table, string $column, string $definition): void {

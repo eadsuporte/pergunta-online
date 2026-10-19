@@ -9,7 +9,7 @@ $actor = api_require_auth();
 api_json([
     'ok' => true,
     'name' => 'Pergunta.Online ChatGPT API',
-    'version' => '1.3',
+    'version' => '1.4',
     'actor' => ['id' => (int)$actor['id'], 'email' => (string)$actor['email']],
     'endpoints' => [
         'GET catalog' => 'catalog',
@@ -25,6 +25,8 @@ api_json([
         'POST evidences' => 'evidences',
         'POST import' => 'import',
         'POST blog' => 'blog',
+        'POST votes' => 'votes',
+        'POST comments' => 'comments',
         'GET OpenAPI' => 'openapi',
     ],
 ]);

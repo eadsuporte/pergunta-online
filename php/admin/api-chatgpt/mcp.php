@@ -42,6 +42,7 @@ function mcp_tools(): array {
             "title" => ["type" => "string", "minLength" => 2],
             "type" => ["type" => "string", "enum" => ["url", "text"]],
             "url" => $text, "text" => $text, "created_at" => $text,
+            "user_id" => ["type" => "integer", "minimum" => 1],
         ],
     ];
     $question = [
@@ -115,6 +116,75 @@ function mcp_tools(): array {
                 "replace_existing" => ["type" => "boolean"],
             ],
         ], false),
+
+        mcp_tool("create_blog_post", "Create or update one real blog post with optional historical author, creation and publication dates. Use dry_run=true for a preview; never fabricate sources.", [
+            "type" => "object", "required" => ["title", "content"], "properties" => [
+                "title" => ["type" => "string", "minLength" => 3, "maxLength" => 255],
+                "content" => ["type" => "string", "minLength" => 1],
+                "author_user_id" => ["type" => "integer", "minimum" => 1],
+                "created_at" => $text, "updated_at" => $text, "published_at" => $text,
+                "status" => ["type" => "string", "enum" => ["draft", "scheduled", "published"]],
+                "published" => ["type" => "boolean"], "external_id" => $text,
+                "source_url" => $text, "category" => $text,
+                "excerpt" => $text, "slug" => $text,
+                "language" => $text, "meta_title" => $text, "meta_description" => $text,
+                "canonical_url" => $text,
+                "tags" => ["type" => "array", "maxItems" => 20, "items" => $text],
+                "sources" => ["type" => "array", "maxItems" => 20,
+                    "items" => ["type" => "object", "required" => ["url"],
+                        "properties" => ["title" => $text, "url" => $text]]],
+                "image" => ["type" => "object", "properties" => [
+                    "url" => $text, "alt" => $text, "credit" => $text, "source_url" => $text]],
+                "image_url" => $text, "remove_image" => ["type" => "boolean"],
+                "update_existing" => ["type" => "boolean"], "dry_run" => ["type" => "boolean"],
+            ],
+        ], false),
+        mcp_tool("import_blog_posts", "Import 1 to 10 historically dated blog posts using the same fields as create_blog_post.", [
+            "type" => "object", "required" => ["items"], "properties" => [
+                "items" => ["type" => "array", "minItems" => 1, "maxItems" => 10,
+                    "items" => ["type" => "object", "required" => ["title", "content"],
+                        "properties" => [
+                            "title" => ["type" => "string", "minLength" => 3],
+                            "content" => ["type" => "string", "minLength" => 1],
+                            "author_user_id" => ["type" => "integer", "minimum" => 1],
+                            "created_at" => $text, "updated_at" => $text,
+                            "published_at" => $text, "status" => $text,
+                            "external_id" => $text, "category" => $text,
+                            "source_url" => $text, "tags" => ["type" => "array", "items" => $text],
+                            "sources" => ["type" => "array", "items" => ["type" => "object",
+                                "required" => ["url"], "properties" => ["url" => $text, "title" => $text]]],
+                            "published" => ["type" => "boolean"],
+                            "update_existing" => ["type" => "boolean"],
+                            "dry_run" => ["type" => "boolean"],
+                        ]]],
+            ],
+        ], false),
+        mcp_tool("vote_question", "Register one vote by a real user on a public question, optionally with a historical date. Repeated votes are reused.", [
+            "type" => "object", "required" => ["question_id", "user_id"], "properties" => [
+                "question_id" => ["type" => "integer", "minimum" => 1],
+                "user_id" => ["type" => "integer", "minimum" => 1],
+                "created_at" => $text,
+            ],
+        ], false),
+        mcp_tool("import_votes", "Import 1 to 50 dated user votes in one transaction; user/question pairs remain unique.", [
+            "type" => "object", "required" => ["items"], "properties" => [
+                "items" => ["type" => "array", "minItems" => 1, "maxItems" => 50,
+                    "items" => ["type" => "object", "required" => ["question_id", "user_id"],
+                        "properties" => [
+                            "question_id" => ["type" => "integer", "minimum" => 1],
+                            "user_id" => ["type" => "integer", "minimum" => 1],
+                            "created_at" => $text,
+                        ]]],
+            ],
+        ], false),
+        mcp_tool("add_comment", "Create one public comment attributed to a user with an optional historical date and idempotent external_id.", [
+            "type" => "object", "required" => ["question_id", "user_id", "body"], "properties" => [
+                "question_id" => ["type" => "integer", "minimum" => 1],
+                "user_id" => ["type" => "integer", "minimum" => 1],
+                "body" => ["type" => "string", "minLength" => 2, "maxLength" => 5000],
+                "created_at" => $text, "external_id" => $text,
+            ],
+        ], false),
         mcp_tool("catalog", "List existing focuses, categories and targets before creating data. Includes inactive entries only when requested.", [
             "type" => "object", "properties" => ["include_inactive" => ["type" => "boolean", "default" => false]],
         ], true),
@@ -137,9 +207,10 @@ function mcp_tools(): array {
                 "name" => $text, "abbr" => $text, "active" => ["type" => "boolean"],
             ],
         ], false),
-        mcp_tool("upsert_category", "Create or update a question category.", [
+        mcp_tool("upsert_category", "Create or update a question category (including historical registration dates).", [
             "type" => "object", "required" => ["name"], "properties" => [
                 "name" => $text, "active" => ["type" => "boolean"],
+                "created_at" => $text, "updated_at" => $text,
             ],
         ], false),
         mcp_tool("upsert_target", "Create or update a person or organization that can respond to a question.", [
@@ -241,6 +312,39 @@ function mcp_execute_tool(string $name, array $args, array $actor): array {
             $answerResult = api_question_answer($args, $actor);
             db()->commit();
             return $answerResult;
+        case "create_blog_post":
+        case "import_blog_posts":
+            require_once __DIR__ . "/blog_service.php";
+            $posts = $name === "create_blog_post" ? [$args] : ($args["items"] ?? []);
+            if (!is_array($posts) || !array_is_list($posts)) {
+                throw new InvalidArgumentException("items deve ser uma lista.");
+            }
+            $result = api_blog_batch($posts, $actor);
+            return $name === "create_blog_post" ? $result["posts"][0] : $result;
+        case "vote_question":
+        case "import_votes":
+            require_once __DIR__ . "/social.php";
+            $items = $name === "vote_question" ? [$args] : ($args["items"] ?? []);
+            if (!is_array($items) || !array_is_list($items)
+                || count($items) < 1 || count($items) > 50) {
+                throw new InvalidArgumentException("Informe de 1 a 50 votos.");
+            }
+            db()->beginTransaction();
+            $votes = [];
+            foreach ($items as $vote) {
+                if (!is_array($vote) || array_is_list($vote)) {
+                    throw new InvalidArgumentException("Cada voto deve ser um objeto.");
+                }
+                $votes[] = api_vote_question($vote, $actor);
+            }
+            db()->commit();
+            return $name === "vote_question" ? $votes[0] : ["received" => count($items), "votes" => $votes];
+        case "add_comment":
+            require_once __DIR__ . "/social.php";
+            db()->beginTransaction();
+            $comment = api_comment_question($args, $actor);
+            db()->commit();
+            return $comment;
         case "catalog":
             return mcp_get_catalog(($args["include_inactive"] ?? false) === true);
         case "search":

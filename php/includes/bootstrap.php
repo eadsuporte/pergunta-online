@@ -176,6 +176,20 @@ function client_ip(): string {
     return substr((string)($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 0, 45);
 }
 
+/**
+ * Keep the latest known activity date, including events imported by an admin.
+ * This is an activity timestamp and must not be treated as proof of login.
+ */
+function user_last_activity_touch(int $userId, string $eventAt): void {
+    $stmt = db()->prepare(
+        'UPDATE users SET
+           last_login_at=CASE WHEN last_login_at IS NULL OR last_login_at<? THEN ? ELSE last_login_at END,
+           updated_at=updated_at
+         WHERE id=?'
+    );
+    $stmt->execute([$eventAt, $eventAt, $userId]);
+}
+
 function status_label(string $status): string {
     return match ($status) {
         'waiting' => 'Aguardando resposta',

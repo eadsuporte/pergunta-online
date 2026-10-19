@@ -243,8 +243,12 @@ function api_category_upsert(array|string $input, array $actor): array {
     }
 
     $active = api_bool($data['active'] ?? null, true);
-    $insert = db()->prepare('INSERT INTO categories (name,active) VALUES (?,?)');
-    $insert->execute([$name, $active ? 1 : 0]);
+    $createdAt = api_historical_date($data['created_at'] ?? null, 'category.created_at')
+        ?? date('Y-m-d H:i:s');
+    $updatedAt = api_historical_date($data['updated_at'] ?? null, 'category.updated_at', $createdAt)
+        ?? $createdAt;
+    $insert = db()->prepare('INSERT INTO categories (name,active,created_at,updated_at) VALUES (?,?,?,?)');
+    $insert->execute([$name, $active ? 1 : 0, $createdAt, $updatedAt]);
     $id = (int)db()->lastInsertId();
     audit_log((int)$actor['id'], 'api.category.created', 'category', $id, $name);
     return ['id' => $id, 'name' => $name, 'active' => $active, 'created' => true];
@@ -328,9 +332,21 @@ function api_evidence_add(int $questionId, array $input, array $actor): array {
     }
     $createdAt = api_historical_date($input['created_at'] ?? null, 'evidence.created_at', (string)$questionCreated)
         ?? date('Y-m-d H:i:s');
+    $evidenceUserId = isset($input['user_id']) ? (int)$input['user_id'] : (int)$actor['id'];
+    if ($evidenceUserId < 1) {
+        throw new InvalidArgumentException('evidence.user_id inválido.');
+    }
+    $stmt = db()->prepare('SELECT id FROM users WHERE id=? LIMIT 1');
+    $stmt->execute([$evidenceUserId]);
+    if (!$stmt->fetchColumn()) {
+        throw new InvalidArgumentException('Usuário da evidência não encontrado.');
+    }
     $stmt = db()->prepare('INSERT INTO question_evidence (question_id,user_id,evidence_type,title,reference_value,created_at) VALUES (?,?,?,?,?,?)');
-    $stmt->execute([$questionId, (int)$actor['id'], $type, $title, $reference, $createdAt]);
+    $stmt->execute([$questionId, $evidenceUserId, $type, $title, $reference, $createdAt]);
     $id = (int)db()->lastInsertId();
+    if (isset($input['user_id'])) {
+        api_touch_user_activity($evidenceUserId, $createdAt);
+    }
     question_history_add($questionId, (int)$actor['id'], 'evidence_added', null, null, $title, $createdAt);
     audit_log((int)$actor['id'], 'api.question.evidence_added', 'question', $questionId, $title);
 
@@ -465,6 +481,12 @@ function api_question_create(array $input, array $actor): array {
         ]);
         $questionId = (int)db()->lastInsertId();
         $created = true;
+        api_touch_user_activity($authorId, $createdAt);
+        if ($answeredBy !== null) {
+            api_touch_user_activity($answeredBy, (string)$answeredAt);
+        } elseif ($takenBy !== null) {
+            api_touch_user_activity($takenBy, (string)$takenAt);
+        }
         question_history_add($questionId, (int)$actor['id'], 'created', null, $status, 'Cadastro histórico via API ChatGPT; autor=' . $authorId, $createdAt);
         audit_log((int)$actor['id'], 'api.question.created', 'question', $questionId, $title);
         $existing = ['status' => $status, 'published' => $published ? 1 : 0, 'moderation_status' => $moderation];

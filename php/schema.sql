@@ -142,10 +142,12 @@ CREATE TABLE IF NOT EXISTS question_comments (
     user_id BIGINT UNSIGNED NULL,
     guest_name VARCHAR(120) NULL,
     body TEXT NOT NULL,
+    external_id VARCHAR(190) NULL,
     ip_hash CHAR(64) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL,
     deleted_by BIGINT UNSIGNED NULL,
+    UNIQUE KEY uq_question_comments_external_id (external_id),
     INDEX idx_comments_question (question_id,deleted_at,created_at,id),
     INDEX idx_comments_guest_rate (ip_hash,created_at),
     INDEX idx_comments_user_rate (user_id,created_at),
@@ -269,7 +271,7 @@ INSERT IGNORE INTO app_settings (setting_key,setting_value) VALUES
 ('site_name','Pergunta.Online'),
 ('max_questions_per_page','50');
 
-INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','10')
+INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','11')
 ON DUPLICATE KEY UPDATE meta_value=VALUES(meta_value);
 
 CREATE TABLE IF NOT EXISTS login_attempts (

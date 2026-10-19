@@ -47,7 +47,7 @@ Se a aplicação estiver atrás de proxy reverso, confirme que o cabeçalho `Aut
 
 ## Limitações
 
-O protocolo MCP permite consultas e gravações administrativas conforme os escopos aprovados. Esta integração não implementa um sistema de identidade federada para usuários não administrativos, nem interface MCP personalizada. O blog permanece disponível na API REST existente e não foi incluído no conjunto de ferramentas MCP.
+O protocolo MCP permite consultas e gravações administrativas conforme os escopos aprovados. Esta integração não implementa um sistema de identidade federada para usuários não administrativos, nem interface MCP personalizada. O blog também é oferecido por create_blog_post e import_blog_posts no MCP, com prévia dry_run opcional.
 
 
 ## Cadastro histórico de usuários, perguntas e respostas
@@ -95,3 +95,39 @@ Conta sem password explícito recebe uma senha aleatória não revelada. Não
 Contas com e-mail existente não são sobrescritas por create_user; use
 update_user_profile explicitamente. A resposta existente não é substituída
 sem replace_existing=true.
+
+
+## Publicação de blog, votação e comentários por MCP
+
+As novas ferramentas MCP são create_blog_post, import_blog_posts (até 10 por
+transação), vote_question, import_votes (até 50) e add_comment. A ferramenta
+upsert_category já existente continua cadastrando categorias de questões;
+agora aceita created_at e updated_at no cadastro. Categorias do blog continuam
+armazenadas no campo textual blog_posts.category.
+
+create_blog_post aceita author_user_id, created_at, updated_at, published_at,
+status, category, content, tags, sources, image, external_id, update_existing
+e dry_run. Um artigo pode ser publicado retroativamente, desde que as datas
+sejam consistentes. Os mecanismos existentes de sanitização HTML, download
+seguro de imagem e deduplicação do blog são reutilizados. O author_user_id é
+validado antes de registrar atividade.
+
+vote_question e import_votes aceitam question_id, user_id e created_at. Cada
+usuário possui no máximo um voto por questão; reenvios retornam o voto original
+sem alterar sua data. add_comment recebe question_id, user_id, body,
+created_at e um external_id opcional para deduplicar reenvios. Os comentários
+são armazenados na mesma question_comments usada pela interface pública.
+
+Quando um usuário é autor de uma pergunta/post, respondente, votante,
+comentarista ou autor explícito de uma evidência, o serviço atualiza
+users.last_login_at para a maior data de atividade registrada; jamais
+retrocede uma data mais recente. Esta é uma data derivada de atividade
+atribuída, não uma garantia de autenticação real. O operador administrativo
+e o instante real de importação permanecem registrados separadamente
+em admin_audit_log, permitindo distinguir atividade histórica importada
+de ações efetivamente realizadas no servidor.
+
+As novas operações REST estão em admin/api-chatgpt/votes.php e
+admin/api-chatgpt/comments.php. O serviço de blog é compartilhado com
+admin/api-chatgpt/blog.php e preserva os contratos existentes. É preciso
+realizar deploy e executar a migração schema_version 11 antes do uso.

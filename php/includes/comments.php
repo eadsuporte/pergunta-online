@@ -69,6 +69,9 @@ function question_comment_create(int $questionId, ?array $user, string $guestNam
 
         $insert = $pdo->prepare('INSERT INTO question_comments (question_id,user_id,guest_name,body,ip_hash) VALUES (?,?,?,?,?)');
         $insert->execute([$questionId, $userId, $guestName, $body, $ipHash]);
+        if ($userId !== null) {
+            user_last_activity_touch($userId, date('Y-m-d H:i:s'));
+        }
         $pdo->commit();
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
