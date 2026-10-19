@@ -50,7 +50,7 @@ Depois acesse `/install`. O instalador cria as tabelas e pede o primeiro adminis
 - criação de perguntas usando focos, categorias e destinatários administrados, evitando variações de texto;
 - moderação opcional antes da publicação;
 - endosso “Boa!” e perguntas salvas, persistidos no MySQL;
-- comentários públicos em perguntas publicadas, inclusive para visitantes sem cadastro, com identificação dos usuários logados, proteção contra spam e remoção administrativa;
+- comentários públicos em perguntas publicadas, com leitura aberta e publicação exclusiva por usuários cadastrados e autenticados, proteção contra spam e remoção administrativa;
 - cronômetro de silêncio com períodos reiniciados corretamente quando a pergunta volta a aguardar resposta;
 - papel `respondent` vinculado a destinatários específicos, além de `user` e `admin`;
 - fluxo para respondente assumir a pauta e registrar a resposta oficial;

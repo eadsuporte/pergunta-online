@@ -40,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)Request::post('action', Request::STRING, '');
 
     if ($action === 'add_comment') {
+        $commentAuthor = require_login();
         if ((int)$question['published'] !== 1) {
             http_response_code(403);
             exit('Esta pergunta não está disponível para comentários.');
@@ -50,8 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 question_comment_create(
                     $id,
-                    $viewer,
-                    (string)Request::post('guest_name', Request::STRING, ''),
+                    $commentAuthor,
                     (string)Request::post('body', Request::STRING, '')
                 );
                 flash('success', 'Comentário publicado.');
@@ -192,9 +192,8 @@ render_page('question', [
     'comments' => $comments,
     'comment_count' => $commentCount,
     'has_comments' => $comments !== [],
-    'comments_open' => (int)$question['published'] === 1,
-    'comment_guest' => $viewer === null,
-    'comment_logged_in' => $viewer !== null,
+    'comments_open' => $viewer !== null && (int)$question['published'] === 1,
+    'comment_login_required' => $viewer === null && (int)$question['published'] === 1,
     'comment_current_name' => (string)($viewer['name'] ?? ''),
     'comment_action_url' => base_url('question?id=' . $id),
     'can_report' => $viewer !== null && (int)$question['published'] === 1,

@@ -109,19 +109,14 @@
             <h3>Deixe seu comentário</h3>
             <input type="hidden" name="csrf_token" value="{{csrf_token}}">
             <input type="hidden" name="action" value="add_comment">
-            {{#comment_guest}}
-            <label><span>Seu nome</span><input name="guest_name" maxlength="120" autocomplete="name" required></label>
-            {{/comment_guest}}
-            {{#comment_logged_in}}
             <p class="muted">Comentando como <strong>{{comment_current_name}}</strong>.</p>
-            {{/comment_logged_in}}
             <label><span>Comentário</span><textarea name="body" rows="4" maxlength="2000" minlength="2" required></textarea></label>
-            <div class="comment-honeypot" aria-hidden="true">
-                <label>Website <input name="website" tabindex="-1" autocomplete="off"></label>
-            </div>
             <button class="button primary" type="submit">Publicar comentário</button>
         </form>
         {{/comments_open}}
+        {{#comment_login_required}}
+        <p class="muted">Para comentar, <a href="{{login_url}}">entre na sua conta</a>{{#registration_enabled}} ou <a href="{{register_url}}">cadastre-se</a>{{/registration_enabled}}.</p>
+        {{/comment_login_required}}
     </section>
 
     {{#can_report}}

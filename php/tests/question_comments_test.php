@@ -20,20 +20,21 @@ function comment_expect_invalid(callable $callback): void {
     throw new RuntimeException('Expected InvalidArgumentException.');
 }
 
-[$name, $body] = question_comment_validate(null, '  Visitante :)  ', "  Olá, comunidade!\n  ");
-comment_expect($name === 'Visitante :)', 'Guest name should be trimmed.');
-comment_expect($body === 'Olá, comunidade!', 'Comment should be trimmed.');
-
-[$name, $body] = question_comment_validate(['id' => 42, 'name' => 'Usuário'], '', 'Comentário válido.');
-comment_expect($name === null && $body === 'Comentário válido.', 'Authenticated user should not require a guest name.');
-
+$body = question_comment_validate(['id' => 42, 'name' => 'Usuário'], "  Olá, comunidade!\n  ");
+comment_expect($body === 'Olá, comunidade!', 'Authenticated comment should be trimmed.');
 comment_expect(question_comment_length('ação 😀') === 6, 'Length must count UTF-8 characters, not bytes.');
 comment_expect(question_comment_length(chr(255)) === -1, 'Invalid UTF-8 should be rejected.');
-comment_expect_invalid(static fn() => question_comment_validate(null, '', 'Texto válido.'));
-comment_expect_invalid(static fn() => question_comment_validate(null, 'A', 'Texto válido.'));
-comment_expect_invalid(static fn() => question_comment_validate(null, str_repeat('a', 121), 'Texto válido.'));
-comment_expect_invalid(static fn() => question_comment_validate(null, 'Visitante', ' '));
-comment_expect_invalid(static fn() => question_comment_validate(null, 'Visitante', str_repeat('a', 2001)));
-comment_expect_invalid(static fn() => question_comment_validate(null, 'Visitante', chr(255) . 'abc'));
+
+comment_expect_invalid(static fn() => question_comment_validate(null, 'Comentário válido.'));
+comment_expect_invalid(static fn() => question_comment_validate([], 'Comentário válido.'));
+comment_expect_invalid(static fn() => question_comment_validate(['id' => 0], 'Comentário válido.'));
+comment_expect_invalid(static fn() => question_comment_validate(['id' => -1], 'Comentário válido.'));
+comment_expect_invalid(static fn() => question_comment_validate(['id' => 42], ' '));
+comment_expect_invalid(static fn() => question_comment_validate(['id' => 42], str_repeat('a', 2001)));
+comment_expect_invalid(static fn() => question_comment_validate(['id' => 42], chr(255) . 'abc'));
+
+// Must reject guests before attempting a database query, even if the caller bypasses the page.
+comment_expect_invalid(static fn() => question_comment_create(17, null, 'Comentário válido.'));
+comment_expect_invalid(static fn() => question_comment_create(17, ['id' => 0], 'Comentário válido.'));
 
 echo "Question comment validation tests passed.\n";
