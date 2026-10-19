@@ -329,18 +329,6 @@ function mcp_oauth_actor(string $requiredScope): array {
     if (!$actor) {
         mcp_oauth_challenge();
     }
-    if (!in_array($requiredScope, explode(" ", (string)$actor["scope"]), true)) {
-        // Log diagnostic context, never bearer tokens, authorization codes or credentials.
-        error_log("[MCP OAuth] HTTP 403: reason=insufficient_scope required=" . $requiredScope
-            . " granted=" . (string)$actor["scope"] . " actor_id=" . (int)$actor["id"]);
-        header("WWW-Authenticate: "
-            . mcp_scope_challenge(mcp_base_url(), $requiredScope, (string)$actor["scope"]));
-        mcp_respond([
-            "error" => "insufficient_scope",
-            "required_scope" => $requiredScope,
-            "reauthorization_required" => true,
-        ], 403);
-    }
     return $actor;
 }
 

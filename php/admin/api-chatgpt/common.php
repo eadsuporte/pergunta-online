@@ -487,7 +487,6 @@ function api_question_create(array $input, array $actor): array {
         } elseif ($takenBy !== null) {
             api_touch_user_activity($takenBy, (string)$takenAt);
         }
-        question_history_add($questionId, (int)$actor['id'], 'created', null, $status, 'Cadastro histórico via API ChatGPT; autor=' . $authorId, $createdAt);
         audit_log((int)$actor['id'], 'api.question.created', 'question', $questionId, $title);
         $existing = ['status' => $status, 'published' => $published ? 1 : 0, 'moderation_status' => $moderation];
     }
