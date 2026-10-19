@@ -50,4 +50,24 @@ scope_expect(str_contains($oauthSource, 'mcp_scope_challenge(mcp_base_url(), $re
     'send missing scope challenge');
 scope_expect(!str_contains($oauthSource, 'mcp_respond(["error" => "insufficient_scope"], 403)'),
     'avoid bare HTTP 403');
-echo "MCP OAuth 403 scope and logging contracts passed.\n";
+// Regression: a syntactically valid Bearer string is not an authenticated administrator.
+// Resolve the access token by its hash, validate expiration/audience and require the
+// granted scope before allowing any administrative MCP read or write operation.
+foreach ([
+    'FROM mcp_oauth_tokens t' => 'token database lookup',
+    'JOIN users u ON u.id=t.user_id' => 'token must identify its actual user',
+    't.token_hash=?' => 'hashed bearer token validation',
+    "t.token_type='access'" => 'refresh tokens cannot invoke MCP tools',
+    't.expires_at>NOW()' => 'expired tokens cannot invoke tools',
+    't.resource=?' => 'token audience restriction',
+    "u.role='admin'" => 'administrator-only authorization',
+    'u.active=1' => 'disabled administrators cannot invoke tools',
+    'hash("sha256", $matches[1])' => 'bearer token must be looked up',
+    'mcp_scope_initial_challenge(mcp_base_url())' => 'initial grant advertises read/write scopes',
+    'reauthorization_required' => 'insufficient scope prompts consent',
+] as $fragment => $purpose) {
+    scope_expect(str_contains($oauthSource, $fragment), $purpose);
+}
+scope_expect(!preg_match('/FROM users\\s+u\\s+WHERE u\\.role=/i', $oauthSource),
+    'never select an arbitrary admin without authenticating the bearer token');
+echo "MCP OAuth 403 scope and logging contracts passed.\\n";
