@@ -220,3 +220,12 @@ body.admin-layout{
 
 /* Blog metadata */
 .blog-post-cover figcaption{padding:9px 13px;background:var(--surface2);font-size:10px;color:var(--muted)}.blog-post-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:16px}.blog-post-tags span{display:inline-flex;padding:6px 9px;border-radius:999px;background:var(--surface2);font-size:10px;font-weight:850;color:var(--muted)}.blog-post-sources{margin-top:36px;padding-top:24px;border-top:1px solid var(--line)}.blog-post-sources h2{font-size:22px;margin:0 0 12px}.blog-post-sources ul{margin:0;padding-left:20px}.blog-post-sources li{margin:7px 0;font-size:13px}.blog-post-sources a{color:var(--accent);font-weight:800}
+
+
+/* Focos vinculados a destinatários na administração. */
+.target-focuses{border:1px solid var(--line);border-radius:12px;padding:13px 16px;min-width:0}
+.target-focuses legend{font-size:13px;font-weight:800;padding:0 6px}
+.target-focuses-options{display:flex;gap:8px 18px;flex-wrap:wrap}
+.target-focuses-options label{display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer}
+.target-focuses-options input[type=checkbox]{width:auto;margin:0;accent-color:var(--accent)}
+.target-focuses .muted{font-size:12px;margin:10px 0 0}
