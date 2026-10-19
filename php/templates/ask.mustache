@@ -14,7 +14,7 @@
         <input type="hidden" name="csrf_token" value="{{csrf_token}}">
         <div class="form-row">
             <label>Foco
-                <select name="focus_id" required>
+                <select name="focus_id" id="ask-focus" required>
                     <option value="">Escolha o foco</option>
                     {{#focuses}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{label}}</option>{{/focuses}}
                 </select>
@@ -29,13 +29,45 @@
         <label>Pergunta<input name="title" required maxlength="255" minlength="15" value="{{title}}"></label>
         <label>Contexto<textarea name="body" required minlength="20" rows="7">{{body}}</textarea></label>
         <label>Para quem deve responder?
-            <select name="target_id" required>
-                <option value="">Escolha o destinatário</option>
-                {{#targets}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/targets}}
+            <select name="target_id" id="ask-target" required disabled>
+                <option value="">Escolha primeiro o foco</option>
+                {{#targets}}<option value="{{id}}" data-focus-ids="{{focus_ids}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/targets}}
             </select>
+            <small class="muted" id="ask-target-help">Os destinatários dependem do foco selecionado.</small>
         </label>
         <button class="button primary" type="submit">Enviar pergunta</button>
     </form>
+    <script>
+    (() => {
+        const focus = document.getElementById('ask-focus');
+        const target = document.getElementById('ask-target');
+        const help = document.getElementById('ask-target-help');
+        const placeholder = target.querySelector('option[value=""]');
+        const catalog = Array.from(target.querySelectorAll('option[data-focus-ids]'));
+        const originalTarget = target.value;
+
+        function filterTargets(preserveSelection = false) {
+            const focusId = focus.value;
+            const selectedId = preserveSelection ? target.value || originalTarget : '';
+            const matches = focusId
+                ? catalog.filter(option => option.dataset.focusIds.split(',').includes(focusId))
+                : [];
+
+            target.replaceChildren(placeholder, ...matches);
+            target.value = matches.some(option => option.value === selectedId) ? selectedId : '';
+            target.disabled = matches.length === 0;
+            placeholder.textContent = !focusId
+                ? 'Escolha primeiro o foco'
+                : matches.length ? 'Escolha o destinatário' : 'Nenhum destinatário vinculado a este foco';
+            help.textContent = !focusId
+                ? 'Escolha um foco para listar os destinatários.'
+                : matches.length ? '' : 'Este foco ainda não tem destinatários vinculados.';
+        }
+
+        focus.addEventListener('change', () => filterTargets());
+        filterTargets(true);
+    })();
+    </script>
     {{/catalog_ready}}
 </section>
 {{>partials/site_footer}}
