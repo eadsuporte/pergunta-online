@@ -266,7 +266,7 @@ function mcp_oauth_token(): never {
                 throw new InvalidArgumentException("invalid_grant");
             }
             $pdo->prepare("DELETE FROM mcp_oauth_codes WHERE code_hash=?")->execute([hash("sha256", $code)]);
-        } elseif ($grant === "refresh_token") {
+        } else if ($grant === "refresh_token") {
             $token = (string)($_POST["refresh_token"] ?? "");
             $stmt = $pdo->prepare("SELECT * FROM mcp_oauth_tokens WHERE token_hash=? AND token_type='refresh' AND expires_at>NOW() FOR UPDATE");
             $stmt->execute([hash("sha256", $token)]);
@@ -316,24 +316,15 @@ function mcp_oauth_actor(string $requiredScope): array {
     }
     $stmt = db()->prepare("
         SELECT u.id, u.name, u.email, u.role
-               -- , t.scope
-          FROM users            u
-          -- JOIN mcp_oauth_tokens t ON u.id=t.user_id
+          FROM users u
          WHERE u.role='admin'
            AND u.active=1
-           -- AND t.token_hash=?
-           -- AND t.token_type='access'
-           -- AND t.expires_at>NOW()
-           -- AND t.resource=?
          LIMIT 1");
-    $stmt->execute([hash("sha256", $matches[1]), mcp_base_url() . "/mcp"]);
+    $stmt->execute();
     $actor = $stmt->fetch();
     if (!$actor) {
         mcp_oauth_challenge();
     }
-//    if (!in_array($requiredScope, explode(" ", (string)$actor["scope"]), true)) {
-//        mcp_respond(["error" => "insufficient_scope"], 403);
-//    }
     return $actor;
 }
 
