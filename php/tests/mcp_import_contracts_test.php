@@ -43,7 +43,7 @@ $perfil = [
 mcp_expect(api_perfil_decode(api_perfil_encode($perfil)) === $perfil, 'writing profile round trip');
 
 $apiRoot = dirname(__DIR__) . '/admin/api-chatgpt/';
-$mcp = (string)file_get_contents($apiRoot . 'mcp.php');
+$mcp = (string)file_get_contents($apiRoot . 'mcp_tools.php');
 foreach ([
     'create_blog_post', 'import_blog_posts', 'vote_question', 'import_votes',
     'add_comment', 'upsert_category', 'create_question', 'import_questions',

@@ -25,7 +25,7 @@ Não utilize na integração MCP o token da API REST antiga, que tem outro prop�
 
 Na versão Web do ChatGPT, abra Plugins, adicione um servidor MCP personalizado e informe a URL pública terminada em `/mcp`. Selecione a autenticação OAuth; o fluxo abre a página de login/consentimento do Pergunta.Online. Após autorizar como administrador, execute a descoberta e instale o plugin.
 
-O servidor expõe as ferramentas `catalog`, `search`, `fetch`, `create_question`, `import_questions`, `upsert_focus`, `upsert_category`, `upsert_target` e `add_evidence`. As três primeiras exigem o escopo `questions:read`; as demais exigem `questions:write`. Todas são ligadas às rotinas já existentes de validação, auditoria, persistência e detecção de duplicidade. O acesso não concede operações genéricas de SQL, exclusão de usuários nem administração da infraestrutura.
+O catálogo MCP atual possui **18 ferramentas**: `search_users`, `create_user`, `update_user_profile`, `answer_question`, `create_blog_post`, `import_blog_posts`, `vote_question`, `import_votes`, `add_comment`, `catalog`, `search`, `fetch`, `create_question`, `import_questions`, `upsert_focus`, `upsert_category`, `upsert_target` e `add_evidence`. `catalog`, `search` e `fetch` exigem `questions:read`; `search_users`, `create_user` e `update_user_profile` exigem `users:write`; as demais exigem `questions:write`. Todas são ligadas às rotinas já existentes de validação, auditoria, persistência e detecção de duplicidade. O acesso não concede operações genéricas de SQL, exclusão de usuários nem administração da infraestrutura.
 
 As ferramentas de gravação só devem ser executadas com permissão do usuário e após consultar o catálogo e possíveis perguntas duplicadas. O protocolo não pesquisa notícias na Web: quem conduz a pesquisa é o cliente ChatGPT.
 
@@ -131,3 +131,22 @@ As novas operações REST estão em admin/api-chatgpt/votes.php e
 admin/api-chatgpt/comments.php. O serviço de blog é compartilhado com
 admin/api-chatgpt/blog.php e preserva os contratos existentes. É preciso
 realizar deploy e executar a migração schema_version 11 antes do uso.
+
+
+## Diagnóstico de ferramentas ausentes no ChatGPT
+
+A lista MCP é gerada por `mcp_tools()` em `php/admin/api-chatgpt/mcp_tools.php` e entregue em `tools/list`; o endpoint não implementa uma lista reduzida para usuários antigos. O `initialize` agora anuncia a versão `1.2.0`. Se o ChatGPT só apresentar as nove ferramentas antigas, enquanto o GitHub tem 18, isso indica **deploy antigo ou catálogo em cache na conexão do ChatGPT**, não ausência de `create_user` no código.
+
+1. Publique o conteúdo atualizado de `php/` no servidor HTTPS e execute as migrações, se houver pendentes (a função `db()` executa as migrações versionadas).
+2. Execute localmente `php php/tests/mcp_tool_discovery_test.php` e `php php/tests/mcp_import_contracts_test.php`.
+3. Com um token OAuth administrativo válido, teste **a instância implantada** (não imprima/commite o token):
+
+   ```sh
+   PERGUNTA_MCP_URL=https://pergunta-online.diegoramos.tech/mcp \
+   PERGUNTA_MCP_TOKEN="$MCP_ACCESS_TOKEN" \
+   php php/tests/mcp_live_discovery_test.php
+   ```
+
+4. Se o teste remoto retornar versão antiga ou catálogo incompleto, corrija o deploy/OPcache do PHP antes de atualizar a conexão. Se ele retornar 18 ferramentas, atualize a descoberta do plugin MCP no ChatGPT; caso a lista permaneça antiga, desconecte e conecte o servidor MCP novamente e autorize os escopos `questions:read questions:write users:write`.
+
+Não é possível atualizar a definição de um plugin já instalado no ChatGPT apenas mudando o código no GitHub: a hospedagem precisa receber os arquivos e o cliente precisa redescobrir o catálogo. Os testes não executam gravações.
