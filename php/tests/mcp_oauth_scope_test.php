@@ -70,4 +70,4 @@ foreach ([
 }
 scope_expect(!preg_match('/FROM users\\s+u\\s+WHERE u\\.role=/i', $oauthSource),
     'never select an arbitrary admin without authenticating the bearer token');
-echo "MCP OAuth 403 scope and logging contracts passed.\\n";
+echo "MCP OAuth 403 scope and logging contracts passed.\n";
