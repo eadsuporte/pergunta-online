@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Pure MCP tool declarations, shared by the HTTP endpoint and CLI contract tests.
  * Keeping the catalog independent from bootstrap/database makes discovery testable.
  */
-const MCP_SERVER_VERSION = '1.2.0';
+const MCP_SERVER_VERSION = '1.3.0';
 
 function mcp_tool(string $name, string $description, array $schema, bool $readonly): array {
     return [

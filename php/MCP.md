@@ -135,7 +135,7 @@ realizar deploy e executar a migração schema_version 11 antes do uso.
 
 ## Diagnóstico de ferramentas ausentes no ChatGPT
 
-A lista MCP é gerada por `mcp_tools()` em `php/admin/api-chatgpt/mcp_tools.php` e entregue em `tools/list`; o endpoint não implementa uma lista reduzida para usuários antigos. O `initialize` agora anuncia a versão `1.2.0`. Se o ChatGPT só apresentar as nove ferramentas antigas, enquanto o GitHub tem 18, isso indica **deploy antigo ou catálogo em cache na conexão do ChatGPT**, não ausência de `create_user` no código.
+A lista MCP é gerada por `mcp_tools()` em `php/admin/api-chatgpt/mcp_tools.php` e entregue em `tools/list`; o endpoint não implementa uma lista reduzida para usuários antigos. O `initialize` agora anuncia a versão `1.3.0`. Se o ChatGPT só apresentar as nove ferramentas antigas, enquanto o GitHub tem 18, isso indica **deploy antigo ou catálogo em cache na conexão do ChatGPT**, não ausência de `create_user` no código.
 
 1. Publique o conteúdo atualizado de `php/` no servidor HTTPS e execute as migrações, se houver pendentes (a função `db()` executa as migrações versionadas).
 2. Execute localmente `php php/tests/mcp_tool_discovery_test.php` e `php php/tests/mcp_import_contracts_test.php`.
@@ -150,3 +150,12 @@ A lista MCP é gerada por `mcp_tools()` em `php/admin/api-chatgpt/mcp_tools.php`
 4. Se o teste remoto retornar versão antiga ou catálogo incompleto, corrija o deploy/OPcache do PHP antes de atualizar a conexão. Se ele retornar 18 ferramentas, atualize a descoberta do plugin MCP no ChatGPT; caso a lista permaneça antiga, desconecte e conecte o servidor MCP novamente e autorize os escopos `questions:read questions:write users:write`.
 
 Não é possível atualizar a definição de um plugin já instalado no ChatGPT apenas mudando o código no GitHub: a hospedagem precisa receber os arquivos e o cliente precisa redescobrir o catálogo. Os testes não executam gravações.
+
+
+## Diagnóstico e log de HTTP 403 no MCP
+
+Em caso de escopo OAuth insuficiente, o endpoint registra no error_log do PHP a causa, o escopo requerido, os escopos concedidos e o ID do administrador, **nunca tokens ou senhas**. Outros HTTP 403 no consentimento OAuth também são registrados com o motivo. Exemplo:
+
+    [MCP OAuth] HTTP 403: reason=insufficient_scope required=users:write granted=questions:read questions:write actor_id=...
+
+A resposta HTTP 403 agora envia WWW-Authenticate com error="insufficient_scope", scope e resource_metadata, além de um JSON com required_scope e reauthorization_required=true. Isso informa ao cliente que precisa solicitar nova autorização OAuth; permissões antigas não são ampliadas automaticamente. O desafio inicial HTTP 401 anuncia questions:read, questions:write e users:write para que uma autorização administrativa nova possa contemplar todas as ferramentas. Nenhuma permissão é concedida sem aprovação explícita. Execute php php/tests/mcp_oauth_scope_test.php para verificar o contrato local e renove o OAuth no ChatGPT após o deploy.

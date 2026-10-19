@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . "/bootstrap.php";
+require_once __DIR__ . "/mcp_scope.php";
 
 /**
  * OAuth 2.1 authorization-code + PKCE support for the standalone MCP endpoint.
@@ -27,6 +28,9 @@ function mcp_respond(array $data, int $status = 200): never {
 }
 
 function mcp_oauth_error(string $error, int $status = 400): never {
+    if ($status === 403) {
+        error_log("[MCP OAuth] HTTP 403: reason=" . $error);
+    }
     mcp_respond(["error" => $error], $status);
 }
 
@@ -324,13 +328,21 @@ function mcp_oauth_actor(string $requiredScope): array {
         mcp_oauth_challenge();
     }
     if (!in_array($requiredScope, explode(" ", (string)$actor["scope"]), true)) {
-        mcp_respond(["error" => "insufficient_scope"], 403);
+        // Never write bearer tokens, authorization codes or credentials to logs.
+        error_log("[MCP OAuth] HTTP 403: reason=insufficient_scope required=" . $requiredScope
+            . " granted=" . (string)$actor["scope"] . " actor_id=" . (int)$actor["id"]);
+        header("WWW-Authenticate: "
+            . mcp_scope_challenge(mcp_base_url(), $requiredScope, (string)$actor["scope"]));
+        mcp_respond([
+            "error" => "insufficient_scope",
+            "required_scope" => $requiredScope,
+            "reauthorization_required" => true,
+        ], 403);
     }
     return $actor;
 }
 
 function mcp_oauth_challenge(): never {
-    $url = mcp_base_url() . "/.well-known/oauth-protected-resource";
-    header("WWW-Authenticate: Bearer realm=\"Pergunta.Online\", resource_metadata=\"" . $url . "\"");
+    header("WWW-Authenticate: " . mcp_scope_initial_challenge(mcp_base_url()));
     mcp_respond(["error" => "unauthorized"], 401);
 }
