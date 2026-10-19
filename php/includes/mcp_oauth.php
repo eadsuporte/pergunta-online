@@ -314,10 +314,17 @@ function mcp_oauth_actor(string $requiredScope): array {
     if (!preg_match("/^Bearer\\s+([A-Za-z0-9_-]{43,128})$/i", trim($auth), $matches)) {
         mcp_oauth_challenge();
     }
-    $stmt = db()->prepare("SELECT t.scope,u.id,u.name,u.email,u.role
-        FROM mcp_oauth_tokens t JOIN users u ON u.id=t.user_id
-        WHERE t.token_hash=? AND t.token_type='access' AND t.expires_at>NOW()
-          AND t.resource=? AND u.role='admin' AND u.active=1 LIMIT 1");
+    $stmt = db()->prepare("
+        SELECT t.scope, u.id, u.name, u.email, u.role
+          FROM mcp_oauth_tokens t
+          JOIN users            u ON u.id=t.user_id
+         WHERE t.token_hash=?
+           AND t.token_type='access'
+           AND t.expires_at>NOW()
+           AND t.resource=?
+           AND u.role='admin'
+           AND u.active=1
+         LIMIT 1");
     $stmt->execute([hash("sha256", $matches[1]), mcp_base_url() . "/mcp"]);
     $actor = $stmt->fetch();
     if (!$actor) {
