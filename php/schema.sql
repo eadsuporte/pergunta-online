@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     last_login_at DATETIME NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    perfil LONGTEXT NULL DEFAULT NULL,
     INDEX idx_users_role (role),
     INDEX idx_users_active (active),
     INDEX idx_users_created (created_at)
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS questions (
     answer_text TEXT NULL,
     waiting_since DATETIME NULL,
     answered_at DATETIME NULL,
+    answered_by BIGINT UNSIGNED NULL,
     published TINYINT(1) NOT NULL DEFAULT 1,
     moderation_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'approved',
     taken_by BIGINT UNSIGNED NULL,
@@ -67,6 +69,7 @@ CREATE TABLE IF NOT EXISTS questions (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_questions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_questions_answered_by FOREIGN KEY (answered_by) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT fk_questions_focus FOREIGN KEY (focus_id) REFERENCES focuses(id) ON DELETE SET NULL,
     CONSTRAINT fk_questions_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
     CONSTRAINT fk_questions_target FOREIGN KEY (target_id) REFERENCES targets(id) ON DELETE SET NULL,
@@ -238,7 +241,7 @@ INSERT IGNORE INTO app_settings (setting_key,setting_value) VALUES
 ('site_name','Pergunta.Online'),
 ('max_questions_per_page','50');
 
-INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','5')
+INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','8')
 ON DUPLICATE KEY UPDATE meta_value=VALUES(meta_value);
 
 CREATE TABLE IF NOT EXISTS login_attempts (

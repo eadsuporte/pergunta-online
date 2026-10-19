@@ -8,12 +8,13 @@ function question_history_add(
     string $eventType,
     ?string $oldStatus = null,
     ?string $newStatus = null,
-    ?string $details = null
+    ?string $details = null,
+    ?string $createdAt = null
 ): void {
     $stmt = db()->prepare(
-        'INSERT INTO question_history (question_id,actor_user_id,event_type,old_status,new_status,details) VALUES (?,?,?,?,?,?)'
+        'INSERT INTO question_history (question_id,actor_user_id,event_type,old_status,new_status,details,created_at) VALUES (?,?,?,?,?,?,COALESCE(?,NOW()))'
     );
-    $stmt->execute([$questionId, $actorUserId, $eventType, $oldStatus, $newStatus, $details]);
+    $stmt->execute([$questionId, $actorUserId, $eventType, $oldStatus, $newStatus, $details, $createdAt]);
 }
 
 function question_update_state(
@@ -72,11 +73,16 @@ function question_update_state(
             $params[] = (int)$actor['id'];
         }
 
+        $answeredBySql = 'answered_by';
+        if ($status === 'answered' && $oldStatus !== 'answered') {
+            $answeredBySql = '?';
+            $params[] = (int)$actor['id'];
+        }
         $params[] = $questionId;
         $update = $pdo->prepare(
             "UPDATE questions
              SET status=?,answer_text=?,published=?,moderation_status=IF(?=1,'approved',moderation_status),waiting_since={$waitingSql},answered_at={$answeredSql},
-                 taken_by={$takenBySql},taken_at={$takenAtSql}
+                 taken_by={$takenBySql},taken_at={$takenAtSql},answered_by={$answeredBySql}
              WHERE id=?"
         );
         $update->execute($params);

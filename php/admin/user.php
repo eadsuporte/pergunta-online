@@ -3,13 +3,14 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/layout.php';
+require_once __DIR__ . '/api-chatgpt/historical.php';
 if (!app_installed()) {
     redirect('install');
 }
 $admin = require_admin();
 $id = (int)Request::get('id', Request::INT, 0);
 
-$stmt = db()->prepare('SELECT id,name,email,role,active,last_login_at,created_at,updated_at FROM users WHERE id=? LIMIT 1');
+$stmt = db()->prepare('SELECT id,name,email,role,active,perfil,last_login_at,created_at,updated_at FROM users WHERE id=? LIMIT 1');
 $stmt->execute([$id]);
 $user = $stmt->fetch();
 if (!$user) {
@@ -21,6 +22,17 @@ if (!$user) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_csrf();
     $action = (string)Request::post('action', Request::STRING, '');
+    if ($action === 'save_perfil') {
+        $rawPerfil = trim((string)Request::post('perfil', Request::STRING, ''));
+        $perfilValue = $rawPerfil === '' ? null : (json_decode($rawPerfil, true) ?? $rawPerfil);
+        try {
+            api_user_profile_update(['user_id' => $id, 'perfil' => $perfilValue], $admin);
+            flash('success', 'Perfil de escrita atualizado.');
+        } catch (InvalidArgumentException $e) {
+            flash('error', $e->getMessage());
+        }
+        redirect('admin/user?id=' . $id);
+    }
     if ($action === 'reset_password') {
         $password = (string)Request::post('password', Request::STRING, '');
         $confirm = (string)Request::post('confirm_password', Request::STRING, '');
@@ -90,6 +102,9 @@ render_page('admin/user', [
         'id' => (int)$user['id'],
         'name' => (string)$user['name'],
         'email' => (string)$user['email'],
+        'perfil_json' => $user['perfil'] === null ? '' :
+            (json_encode(api_perfil_decode((string)$user['perfil']),
+                JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: ''),
         'role' => match ((string)$user['role']) {
             'admin' => 'Administrador',
             'respondent' => 'Respondente',

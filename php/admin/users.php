@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/layout.php';
+require_once __DIR__ . '/api-chatgpt/historical.php';
 if (!app_installed()) {
     redirect('install');
 }
@@ -44,13 +45,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('error', 'Informe nome, e-mail válido e senha com pelo menos 10 caracteres.');
         } else {
             try {
-                $stmt = db()->prepare('INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)');
-                $stmt->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT), $role]);
+                $rawPerfil = trim((string)Request::post('perfil', Request::STRING, ''));
+                $perfilValue = $rawPerfil === '' ? null : (json_decode($rawPerfil, true) ?? $rawPerfil);
+                $perfil = api_perfil_encode($perfilValue);
+                $rawDate = trim((string)Request::post('created_at', Request::STRING, ''));
+                if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $rawDate)) {
+                    $rawDate .= ':00';
+                }
+                $createdAt = api_historical_date($rawDate, 'created_at') ?? date('Y-m-d H:i:s');
+                $stmt = db()->prepare('INSERT INTO users (name,email,password_hash,role,perfil,created_at,updated_at) VALUES (?,?,?,?,?,?,?)');
+                $stmt->execute([$name, $email, password_hash($password, PASSWORD_DEFAULT), $role,
+                    $perfil, $createdAt, $createdAt]);
                 $newId = (int)db()->lastInsertId();
                 audit_log((int)$admin['id'], 'user.created', 'user', $newId, $role);
                 flash('success', 'Usuário criado.');
             } catch (PDOException $e) {
                 flash('error', $e->getCode() === '23000' ? 'Já existe uma conta com esse e-mail.' : 'Não foi possível criar o usuário.');
+            } catch (InvalidArgumentException $e) {
+                flash('error', $e->getMessage());
             }
         }
         redirect('admin/users');

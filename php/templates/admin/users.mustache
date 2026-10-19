@@ -29,6 +29,10 @@
                 <option value="admin">Administrador</option>
             </select>
         </label>
+        <label><span>Data original de cadastro (opcional)</span><input type="datetime-local" name="created_at"></label>
+        <label><span>Perfil de escrita (JSON ou descrição)</span>
+            <textarea name="perfil" rows="5" placeholder='{"estilo_escrita":"informal","time_coracao":"Vasco","usa_emojis":true,"abreviacoes":["vc","tbm"]}'></textarea>
+        </label>
         <button class="button primary" type="submit">Criar usuário</button>
     </form>
 </details>

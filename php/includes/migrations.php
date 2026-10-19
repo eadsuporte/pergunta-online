@@ -344,6 +344,23 @@ function run_schema_migrations(PDO $pdo): void {
         $version = 7;
     }
 
+    if ($version < 8) {
+        // The column may already exist on installations where it was added manually.
+        migration_add_column($pdo, 'users', 'perfil', 'LONGTEXT NULL DEFAULT NULL AFTER updated_at');
+        migration_add_column($pdo, 'questions', 'answered_by', 'BIGINT UNSIGNED NULL AFTER answered_at');
+        $fk = $pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+            WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='questions'
+              AND CONSTRAINT_NAME='fk_questions_answered_by'");
+        $fk->execute();
+        if (!(int)$fk->fetchColumn()) {
+            $pdo->exec("ALTER TABLE questions ADD CONSTRAINT fk_questions_answered_by
+                FOREIGN KEY (answered_by) REFERENCES users(id) ON DELETE SET NULL");
+        }
+        $pdo->exec("INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','8')
+            ON DUPLICATE KEY UPDATE meta_value=VALUES(meta_value)");
+        $version = 8;
+    }
+
 }
 
 function migration_add_column(PDO $pdo, string $table, string $column, string $definition): void {

@@ -48,3 +48,50 @@ Se a aplicação estiver atrás de proxy reverso, confirme que o cabeçalho `Aut
 ## Limitações
 
 O protocolo MCP permite consultas e gravações administrativas conforme os escopos aprovados. Esta integração não implementa um sistema de identidade federada para usuários não administrativos, nem interface MCP personalizada. O blog permanece disponível na API REST existente e não foi incluído no conjunto de ferramentas MCP.
+
+
+## Cadastro histórico de usuários, perguntas e respostas
+
+As ferramentas administrativas MCP adicionais são search_users, create_user,
+update_user_profile e answer_question. create_question e import_questions agora
+aceitam user_id para vincular a autoria verdadeira a uma conta existente.
+É possível informar datas originais no formato YYYY-MM-DD HH:MM:SS:
+users.created_at/updated_at; questions.created_at/updated_at,
+waiting_since/taken_at/answered_at; question_evidence.created_at e a data da
+resposta em answer_question. Datas futuras ou anteriores ao registro de origem
+são rejeitadas. Sem datas explícitas, usam-se as datas normais do aplicativo.
+
+O campo users.perfil é LONGTEXT e recebe um objeto JSON livre, por exemplo:
+
+```json
+{
+  "estilo_escrita": "coloquial, mensagens curtas",
+  "time_coracao": "Vasco da Gama",
+  "usa_emojis": true,
+  "emojis_frequentes": [":)", "⚽"],
+  "abreviacoes": ["vc", "pq", "tbm"],
+  "pontuacao": "muitas exclamações",
+  "expressoes": ["né", "cara"],
+  "exemplos_escrita": ["vc viu o jogo ontem? :)"]
+}
+```
+
+A aplicação preserva o objeto JSON recebido sem reduzir sua estrutura.
+Se for enviada apenas uma string, ela é armazenada na chave observacoes.
+Nunca atribua características inventadas a uma pessoa; use preferências
+fornecidas ou evidências autorizadas.
+
+REST autenticada: GET/POST admin/api-chatgpt/users.php, POST
+admin/api-chatgpt/user-profile.php e POST admin/api-chatgpt/answers.php.
+O MCP exige o escopo OAuth users:write para criar ou consultar contas e alterar
+perfis, além dos escopos questions:read / questions:write já existentes para
+as outras ferramentas. É necessário renovar a autorização para conceder o
+novo escopo. O administrador que executou a importação e o instante real da
+operação permanecem registrados em admin_audit_log mesmo quando os dados
+importados representam datas antigas.
+
+Conta sem password explícito recebe uma senha aleatória não revelada. Não
+é possível entrar nessa conta até um administrador definir uma senha pela UI.
+Contas com e-mail existente não são sobrescritas por create_user; use
+update_user_profile explicitamente. A resposta existente não é substituída
+sem replace_existing=true.

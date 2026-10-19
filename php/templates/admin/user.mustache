@@ -28,6 +28,15 @@
 
         <form method="post" class="admin-stack-form">
             <input type="hidden" name="csrf_token" value="{{csrf_token}}">
+            <input type="hidden" name="action" value="save_perfil">
+            <h3>Perfil de escrita</h3>
+            <p class="muted">Registre estilo de escrita, time do coração, emojis, abreviações, expressões e exemplos. Aceita objeto JSON ou texto livre.</p>
+            <label><span>users.perfil</span><textarea name="perfil" rows="9">{{user.perfil_json}}</textarea></label>
+            <button class="button primary small" type="submit">Salvar perfil</button>
+        </form>
+
+        <form method="post" class="admin-stack-form">
+            <input type="hidden" name="csrf_token" value="{{csrf_token}}">
             <input type="hidden" name="action" value="reset_password">
             <h3>Redefinir senha</h3>
             <label><span>Nova senha</span><input type="password" name="password" required minlength="10"></label>

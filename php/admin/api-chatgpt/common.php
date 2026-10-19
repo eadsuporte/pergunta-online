@@ -320,13 +320,21 @@ function api_evidence_add(int $questionId, array $input, array $actor): array {
         return ['id' => $existingId, 'title' => $title, 'type' => $type, 'reference' => $reference, 'created' => false];
     }
 
-    $stmt = db()->prepare('INSERT INTO question_evidence (question_id,user_id,evidence_type,title,reference_value) VALUES (?,?,?,?,?)');
-    $stmt->execute([$questionId, (int)$actor['id'], $type, $title, $reference]);
+    $question = db()->prepare('SELECT created_at FROM questions WHERE id=? AND deleted_at IS NULL');
+    $question->execute([$questionId]);
+    $questionCreated = $question->fetchColumn();
+    if (!$questionCreated) {
+        throw new InvalidArgumentException('Pergunta não encontrada.');
+    }
+    $createdAt = api_historical_date($input['created_at'] ?? null, 'evidence.created_at', (string)$questionCreated)
+        ?? date('Y-m-d H:i:s');
+    $stmt = db()->prepare('INSERT INTO question_evidence (question_id,user_id,evidence_type,title,reference_value,created_at) VALUES (?,?,?,?,?,?)');
+    $stmt->execute([$questionId, (int)$actor['id'], $type, $title, $reference, $createdAt]);
     $id = (int)db()->lastInsertId();
-    question_history_add($questionId, (int)$actor['id'], 'evidence_added', null, null, $title);
+    question_history_add($questionId, (int)$actor['id'], 'evidence_added', null, null, $title, $createdAt);
     audit_log((int)$actor['id'], 'api.question.evidence_added', 'question', $questionId, $title);
 
-    return ['id' => $id, 'title' => $title, 'type' => $type, 'reference' => $reference, 'created' => true];
+    return ['id' => $id, 'title' => $title, 'type' => $type, 'reference' => $reference, 'created_at' => $createdAt, 'created' => true];
 }
 
 function api_question_create(array $input, array $actor): array {
@@ -358,6 +366,14 @@ function api_question_create(array $input, array $actor): array {
     $targetInput = $input['target'];
     if (!is_array($targetInput) && !is_string($targetInput)) {
         throw new InvalidArgumentException('target precisa ser texto ou objeto.');
+    }
+
+    $createdAt = api_historical_date($input['created_at'] ?? null, 'created_at') ?? date('Y-m-d H:i:s');
+    $authorId = (int)($input['user_id'] ?? $actor['id']);
+    $authorStmt = db()->prepare('SELECT id FROM users WHERE id=? LIMIT 1');
+    $authorStmt->execute([$authorId]);
+    if (!$authorStmt->fetchColumn()) {
+        throw new InvalidArgumentException('user_id não corresponde a um usuário existente.');
     }
 
     $focus = api_focus_upsert($focusInput, $actor);
@@ -397,24 +413,56 @@ function api_question_create(array $input, array $actor): array {
         if ($status === 'answered' && $answer === '') {
             throw new InvalidArgumentException('answer_text é obrigatório quando status=answered.');
         }
-        $waitingSince = in_array($status, ['waiting', 'taken'], true) ? date('Y-m-d H:i:s') : null;
-        $answeredAt = $status === 'answered' ? date('Y-m-d H:i:s') : null;
+        $answeredAt = $status === 'answered'
+            ? (api_historical_date($input['answered_at'] ?? null, 'answered_at', $createdAt) ?? $createdAt)
+            : null;
+        if ($status !== 'answered' && array_key_exists('answered_at', $input)) {
+            throw new InvalidArgumentException('answered_at exige status=answered.');
+        }
+        $updatedAt = api_historical_date($input['updated_at'] ?? null, 'updated_at', $createdAt)
+            ?? ($answeredAt ?? $createdAt);
+        if ($answeredAt !== null && $updatedAt < $answeredAt) {
+            throw new InvalidArgumentException('updated_at não pode anteceder answered_at.');
+        }
+        $waitingSince = in_array($status, ['waiting', 'taken'], true)
+            ? (api_historical_date($input['waiting_since'] ?? null, 'waiting_since', $createdAt) ?? $createdAt)
+            : null;
+        $takenAt = $status === 'taken'
+            ? (api_historical_date($input['taken_at'] ?? null, 'taken_at', $createdAt) ?? $createdAt)
+            : null;
+        $answeredBy = null;
+        $takenBy = null;
+        if ($status === 'answered' || $status === 'taken') {
+            $attributor = (int)($input[$status === 'answered' ? 'answered_by_user_id' : 'taken_by_user_id'] ?? $actor['id']);
+            $stmtUser = db()->prepare("SELECT id FROM users WHERE id=? AND role IN ('admin','respondent') LIMIT 1");
+            $stmtUser->execute([$attributor]);
+            if (!$stmtUser->fetchColumn()) {
+                throw new InvalidArgumentException('Respondente não encontrado ou sem papel permitido.');
+            }
+            if ($status === 'answered') {
+                $answeredBy = $attributor;
+            } else {
+                $takenBy = $attributor;
+            }
+        }
 
         $stmt = db()->prepare("
             INSERT INTO questions
                 (user_id,focus_id,focus_name,focus_abbr,category_id,category,title,body,target_name,target_id,
-                 status,answer_text,waiting_since,answered_at,published,moderation_status)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 status,answer_text,waiting_since,answered_at,answered_by,taken_by,taken_at,
+                 published,moderation_status,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $stmt->execute([
-            (int)$actor['id'], (int)$focus['id'], $focus['name'], $focus['abbr'],
+            $authorId, (int)$focus['id'], $focus['name'], $focus['abbr'],
             (int)$category['id'], $category['name'], $title, $body,
             $target['name'], (int)$target['id'], $status, $answer ?: null,
-            $waitingSince, $answeredAt, $published ? 1 : 0, $moderation,
+            $waitingSince, $answeredAt, $answeredBy, $takenBy, $takenAt,
+            $published ? 1 : 0, $moderation, $createdAt, $updatedAt,
         ]);
         $questionId = (int)db()->lastInsertId();
         $created = true;
-        question_history_add($questionId, (int)$actor['id'], 'created', null, $status, 'Cadastro automático via API ChatGPT.');
+        question_history_add($questionId, (int)$actor['id'], 'created', null, $status, 'Cadastro histórico via API ChatGPT; autor=' . $authorId, $createdAt);
         audit_log((int)$actor['id'], 'api.question.created', 'question', $questionId, $title);
         $existing = ['status' => $status, 'published' => $published ? 1 : 0, 'moderation_status' => $moderation];
     }
@@ -441,6 +489,8 @@ function api_question_create(array $input, array $actor): array {
         'id' => $questionId,
         'created' => $created,
         'title' => $title,
+        'user_id' => $created ? $authorId : (int)db()->query('SELECT user_id FROM questions WHERE id=' . $questionId)->fetchColumn(),
+        'created_at' => $created ? $createdAt : (string)db()->query('SELECT created_at FROM questions WHERE id=' . $questionId)->fetchColumn(),
         'status' => (string)$existing['status'],
         'published' => (int)$existing['published'] === 1,
         'moderation_status' => (string)$existing['moderation_status'],
@@ -475,3 +525,5 @@ function api_handle(callable $callback): never {
         api_error('Erro interno ao processar a API.', 500);
     }
 }
+
+require_once __DIR__ . '/historical.php';

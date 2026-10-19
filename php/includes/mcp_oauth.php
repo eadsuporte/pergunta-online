@@ -59,7 +59,7 @@ function mcp_oauth_scopes(string $value): string {
         return "questions:read";
     }
     $parts = array_values(array_unique($parts));
-    if (array_diff($parts, ["questions:read", "questions:write", "offline_access"]) !== []) {
+    if (array_diff($parts, ["questions:read", "questions:write", "users:write", "offline_access"]) !== []) {
         throw new InvalidArgumentException("Escopo OAuth invalido.");
     }
     return implode(" ", $parts);
@@ -71,7 +71,7 @@ function mcp_oauth_metadata(string $type): never {
         mcp_respond([
             "resource" => $base . "/mcp",
             "authorization_servers" => [$base],
-            "scopes_supported" => ["questions:read", "questions:write", "offline_access"],
+            "scopes_supported" => ["questions:read", "questions:write", "users:write", "offline_access"],
             "bearer_methods_supported" => ["header"],
         ]);
     }
@@ -84,7 +84,7 @@ function mcp_oauth_metadata(string $type): never {
         "grant_types_supported" => ["authorization_code", "refresh_token"],
         "code_challenge_methods_supported" => ["S256"],
         "token_endpoint_auth_methods_supported" => ["none"],
-        "scopes_supported" => ["questions:read", "questions:write", "offline_access"],
+        "scopes_supported" => ["questions:read", "questions:write", "users:write", "offline_access"],
     ]);
 }
 
@@ -151,7 +151,7 @@ function mcp_oauth_authorize(): never {
             mcp_oauth_error("invalid_request");
         }
         try {
-            $scope = mcp_oauth_scopes((string)($_GET["scope"] ?? "questions:read questions:write"));
+            $scope = mcp_oauth_scopes((string)($_GET["scope"] ?? "questions:read questions:write users:write"));
         } catch (InvalidArgumentException $e) {
             mcp_oauth_error("invalid_scope");
         }
@@ -180,6 +180,7 @@ function mcp_oauth_authorize(): never {
             "redirect_uri" => $uri,
             "scope_read" => str_contains($scope, "questions:read"),
             "scope_write" => str_contains($scope, "questions:write"),
+            "scope_users" => str_contains($scope, "users:write"),
             "nonce" => $nonce,
             "form_action" => mcp_base_url() . "/oauth/authorize",
         ], "Autorizar integracao ChatGPT");

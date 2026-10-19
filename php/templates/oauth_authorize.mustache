@@ -6,7 +6,8 @@
     <p>Permissões solicitadas:</p>
     <ul>
         {{#scope_read}}<li>Consultar perguntas, evidências, focos, categorias e destinatários, incluindo itens não publicados.</li>{{/scope_read}}
-        {{#scope_write}}<li>Criar perguntas, importar lotes, cadastrar entidades e adicionar evidências. Essas ações modificam o banco de dados.</li>{{/scope_write}}
+        {{#scope_write}}<li>Criar perguntas, importar lotes, responder perguntas, cadastrar entidades e adicionar evidências. Essas ações modificam o banco de dados.</li>{{/scope_write}}
+        {{#scope_users}}<li>Criar contas de usuários e respondentes, consultar usuários e gerenciar seus perfis de escrita (dados pessoais).</li>{{/scope_users}}
     </ul>
     <p>A autorização pode permitir que o ChatGPT execute ações administrativas em seu nome. Autorize apenas um cliente que você reconheça.</p>
     <form method="post" action="{{form_action}}">

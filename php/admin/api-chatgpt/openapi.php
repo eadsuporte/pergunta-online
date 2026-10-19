@@ -19,6 +19,7 @@ $evidenceSchema = [
         'type' => ['type' => 'string', 'enum' => ['url', 'text']],
         'url' => ['type' => 'string', 'format' => 'uri'],
         'text' => ['type' => 'string'],
+        'created_at' => ['type' => 'string', 'description' => 'YYYY-MM-DD HH:MM:SS (data original).'],
     ],
 ];
 
@@ -42,10 +43,44 @@ $questionSchema = [
         'published' => ['type' => 'boolean'],
         'moderation_status' => ['type' => 'string', 'enum' => ['pending', 'approved', 'rejected']],
         'answer_text' => ['type' => 'string'],
+        'user_id' => ['type' => 'integer', 'minimum' => 1],
+        'created_at' => ['type' => 'string', 'description' => 'Data original da pergunta: YYYY-MM-DD HH:MM:SS.'],
+        'updated_at' => ['type' => 'string'],
+        'waiting_since' => ['type' => 'string'],
+        'taken_at' => ['type' => 'string'],
+        'taken_by_user_id' => ['type' => 'integer', 'minimum' => 1],
+        'answered_at' => ['type' => 'string'],
+        'answered_by_user_id' => ['type' => 'integer', 'minimum' => 1],
         'evidence' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/Evidence']],
     ],
 ];
 
+$userSchema = [
+    'type' => 'object',
+    'required' => ['name', 'email'],
+    'properties' => [
+        'name' => ['type' => 'string', 'minLength' => 2, 'maxLength' => 120],
+        'email' => ['type' => 'string', 'format' => 'email'],
+        'role' => ['type' => 'string', 'enum' => ['user', 'respondent']],
+        'active' => ['type' => 'boolean'],
+        'password' => ['type' => 'string', 'minLength' => 10],
+        'perfil' => ['oneOf' => [['type' => 'object'], ['type' => 'string']]],
+        'created_at' => ['type' => 'string'],
+        'updated_at' => ['type' => 'string'],
+    ],
+];
+$answerSchema = [
+    'type' => 'object',
+    'required' => ['question_id', 'answer_text'],
+    'properties' => [
+        'question_id' => ['type' => 'integer', 'minimum' => 1],
+        'answer_text' => ['type' => 'string', 'minLength' => 1],
+        'answered_by_user_id' => ['type' => 'integer', 'minimum' => 1],
+        'answered_at' => ['type' => 'string'],
+        'updated_at' => ['type' => 'string'],
+        'replace_existing' => ['type' => 'boolean'],
+    ],
+];
 
 $blogSourceSchema = [
     'type' => 'object',
@@ -161,7 +196,7 @@ api_json([
     'openapi' => '3.1.0',
     'info' => [
         'title' => 'Pergunta.Online ChatGPT API',
-        'version' => '1.2.0',
+        'version' => '1.3.0',
         'description' => 'API para pesquisa assistida por ChatGPT e cadastro controlado de focos, categorias, destinatários, perguntas e evidências.',
     ],
     'servers' => [['url' => $server]],
@@ -176,6 +211,8 @@ api_json([
         'schemas' => [
             'Evidence' => $evidenceSchema,
             'Question' => $questionSchema,
+            'User' => $userSchema,
+            'Answer' => $answerSchema,
             'BlogSource' => $blogSourceSchema,
             'BlogImage' => $blogImageSchema,
             'BlogPost' => $blogPostSchema,
@@ -183,6 +220,49 @@ api_json([
     ],
     'security' => [['bearerAuth' => []]],
     'paths' => [
+        '/users' => [
+            'get' => [
+                'operationId' => 'searchUsers',
+                'summary' => 'Procura usuários por nome ou e-mail e retorna perfil de escrita.',
+                'parameters' => [[
+                    'name' => 'q', 'in' => 'query', 'required' => false,
+                    'schema' => ['type' => 'string'],
+                ]],
+                'responses' => ['200' => ['description' => 'Usuários localizados']],
+            ],
+            'post' => [
+                'operationId' => 'createUser',
+                'summary' => 'Cria uma conta com perfil de escrita e data de cadastro histórica.',
+                'requestBody' => ['required' => true, 'content' => [
+                    'application/json' => ['schema' => ['$ref' => '#/components/schemas/User']],
+                ]],
+                'responses' => ['200' => ['description' => 'Conta criada ou reutilizada']],
+            ],
+        ],
+        '/user-profile' => [
+            'post' => [
+                'operationId' => 'updateUserProfile',
+                'summary' => 'Atualiza o perfil textual/JSON de um usuário por ID.',
+                'requestBody' => ['required' => true, 'content' => ['application/json' => [
+                    'schema' => ['type' => 'object', 'required' => ['user_id', 'perfil'], 'properties' => [
+                        'user_id' => ['type' => 'integer'],
+                        'perfil' => ['oneOf' => [['type' => 'object'], ['type' => 'string']]],
+                        'updated_at' => ['type' => 'string'],
+                    ]],
+                ]]],
+                'responses' => ['200' => ['description' => 'Perfil atualizado']],
+            ],
+        ],
+        '/answers' => [
+            'post' => [
+                'operationId' => 'answerQuestion',
+                'summary' => 'Registra resposta, autor da resposta e data histórica.',
+                'requestBody' => ['required' => true, 'content' => ['application/json' => [
+                    'schema' => ['$ref' => '#/components/schemas/Answer'],
+                ]]],
+                'responses' => ['200' => ['description' => 'Resposta registrada']],
+            ],
+        ],
         '/catalog' => [
             'get' => [
                 'operationId' => 'getCatalog',

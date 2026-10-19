@@ -41,7 +41,7 @@ function mcp_tools(): array {
         "properties" => [
             "title" => ["type" => "string", "minLength" => 2],
             "type" => ["type" => "string", "enum" => ["url", "text"]],
-            "url" => $text, "text" => $text,
+            "url" => $text, "text" => $text, "created_at" => $text,
         ],
     ];
     $question = [
@@ -71,10 +71,50 @@ function mcp_tools(): array {
             "published" => ["type" => "boolean"],
             "moderation_status" => ["type" => "string", "enum" => ["pending", "approved", "rejected"]],
             "answer_text" => $text,
+            "user_id" => ["type" => "integer", "minimum" => 1],
+            "created_at" => $text, "updated_at" => $text,
+            "waiting_since" => $text, "taken_at" => $text,
+            "taken_by_user_id" => ["type" => "integer", "minimum" => 1],
+            "answered_at" => $text,
+            "answered_by_user_id" => ["type" => "integer", "minimum" => 1],
             "evidence" => ["type" => "array", "maxItems" => 20, "items" => $evidence],
         ],
     ];
     return [
+        mcp_tool("search_users", "Search administrative user records by name or email to obtain IDs and writing profiles.", [
+            "type" => "object", "properties" => [
+                "query" => ["type" => "string", "maxLength" => 190],
+            ],
+        ], true),
+        mcp_tool("create_user", "Create a user or respondent with a historical registration date and a structured writing profile; an existing email is reused without modifying it.", [
+            "type" => "object", "required" => ["name", "email"], "properties" => [
+                "name" => ["type" => "string", "minLength" => 2, "maxLength" => 120],
+                "email" => ["type" => "string", "format" => "email"],
+                "role" => ["type" => "string", "enum" => ["user", "respondent"]],
+                "active" => ["type" => "boolean"],
+                "password" => ["type" => "string", "minLength" => 10],
+                "perfil" => ["oneOf" => [["type" => "object"], ["type" => "string"]]],
+                "created_at" => ["type" => "string"],
+                "updated_at" => ["type" => "string"],
+            ],
+        ], false),
+        mcp_tool("update_user_profile", "Replace the structured writing profile of an existing user without changing the account role.", [
+            "type" => "object", "required" => ["user_id", "perfil"], "properties" => [
+                "user_id" => ["type" => "integer", "minimum" => 1],
+                "perfil" => ["oneOf" => [["type" => "object"], ["type" => "string"]]],
+                "updated_at" => ["type" => "string"],
+            ],
+        ], false),
+        mcp_tool("answer_question", "Record an answer attributed to a respondent or administrator with an optional historical date. Preserves the real administrative audit timestamp.", [
+            "type" => "object", "required" => ["question_id", "answer_text"], "properties" => [
+                "question_id" => ["type" => "integer", "minimum" => 1],
+                "answer_text" => ["type" => "string", "minLength" => 1],
+                "answered_by_user_id" => ["type" => "integer", "minimum" => 1],
+                "answered_at" => ["type" => "string"],
+                "updated_at" => ["type" => "string"],
+                "replace_existing" => ["type" => "boolean"],
+            ],
+        ], false),
         mcp_tool("catalog", "List existing focuses, categories and targets before creating data. Includes inactive entries only when requested.", [
             "type" => "object", "properties" => ["include_inactive" => ["type" => "boolean", "default" => false]],
         ], true),
@@ -167,7 +207,7 @@ function mcp_fetch(string $id): array {
     }
     $questionId = (int)$matches[1];
     $stmt = db()->prepare("SELECT id,title,body,focus_name,category,target_name,status,published,
-        moderation_status,answer_text,created_at,updated_at FROM questions WHERE id=? AND deleted_at IS NULL");
+        moderation_status,answer_text,created_at,updated_at,user_id,answered_at,answered_by FROM questions WHERE id=? AND deleted_at IS NULL");
     $stmt->execute([$questionId]);
     $row = $stmt->fetch();
     if (!$row) {
@@ -184,6 +224,23 @@ function mcp_fetch(string $id): array {
 
 function mcp_execute_tool(string $name, array $args, array $actor): array {
     switch ($name) {
+        case "search_users":
+            return api_users_search((string)($args["query"] ?? ""));
+        case "create_user":
+            db()->beginTransaction();
+            $createdUser = api_user_create($args, $actor);
+            db()->commit();
+            return $createdUser;
+        case "update_user_profile":
+            db()->beginTransaction();
+            $profileResult = api_user_profile_update($args, $actor);
+            db()->commit();
+            return $profileResult;
+        case "answer_question":
+            db()->beginTransaction();
+            $answerResult = api_question_answer($args, $actor);
+            db()->commit();
+            return $answerResult;
         case "catalog":
             return mcp_get_catalog(($args["include_inactive"] ?? false) === true);
         case "search":
@@ -289,8 +346,8 @@ if ($rpcMethod === "initialize") {
     mcp_rpc($id, ["result" => [
         "protocolVersion" => "2025-06-18",
         "capabilities" => ["tools" => ["listChanged" => false]],
-        "serverInfo" => ["name" => "pergunta-online", "version" => "1.0.0"],
-        "instructions" => "Search for existing questions and inspect the catalog before creating anything. Write only from verified public sources and avoid duplicates. Authorization is required for all operations.",
+        "serverInfo" => ["name" => "pergunta-online", "version" => "1.1.0"],
+        "instructions" => "Search for existing questions and inspect the catalog before creating anything. Preserve accurate source attribution and real administrative audit logs when importing historical dates. Authorization is required for all operations.",
     ]]);
 }
 if ($rpcMethod === "ping") {
@@ -311,7 +368,9 @@ if ($rpcMethod === "tools/call") {
     if ($tool === null) {
         mcp_rpc_error($id, -32602, "Unknown tool.");
     }
-    $actor = mcp_oauth_actor($tool["annotations"]["readOnlyHint"] ? "questions:read" : "questions:write");
+    $userTool = in_array($name, ["search_users", "create_user", "update_user_profile"], true);
+    $scope = $userTool ? "users:write" : ($tool["annotations"]["readOnlyHint"] ? "questions:read" : "questions:write");
+    $actor = mcp_oauth_actor($scope);
     try {
         $data = mcp_execute_tool($name, $args, $actor);
         mcp_rpc($id, ["result" => [
