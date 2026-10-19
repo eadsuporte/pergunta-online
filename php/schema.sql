@@ -42,6 +42,16 @@ CREATE TABLE IF NOT EXISTS targets (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS target_focuses (
+    target_id BIGINT UNSIGNED NOT NULL,
+    focus_id BIGINT UNSIGNED NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (target_id,focus_id),
+    INDEX idx_target_focuses_focus (focus_id,target_id),
+    CONSTRAINT fk_target_focuses_target FOREIGN KEY (target_id) REFERENCES targets(id) ON DELETE CASCADE,
+    CONSTRAINT fk_target_focuses_focus FOREIGN KEY (focus_id) REFERENCES focuses(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS questions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
@@ -241,7 +251,7 @@ INSERT IGNORE INTO app_settings (setting_key,setting_value) VALUES
 ('site_name','Pergunta.Online'),
 ('max_questions_per_page','50');
 
-INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','8')
+INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','9')
 ON DUPLICATE KEY UPDATE meta_value=VALUES(meta_value);
 
 CREATE TABLE IF NOT EXISTS login_attempts (
