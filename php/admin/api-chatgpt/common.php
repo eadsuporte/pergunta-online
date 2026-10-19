@@ -379,6 +379,9 @@ function api_question_create(array $input, array $actor): array {
     $focus = api_focus_upsert($focusInput, $actor);
     $category = api_category_upsert($categoryInput, $actor);
     $target = api_target_upsert($targetInput, $actor);
+    // Imported questions establish the same focus-to-target relationship as the admin UI.
+    $linkTarget = db()->prepare('INSERT IGNORE INTO target_focuses (target_id,focus_id) VALUES (?,?)');
+    $linkTarget->execute([(int)$target['id'], (int)$focus['id']]);
 
     $duplicate = db()->prepare('SELECT id,status,published,moderation_status FROM questions WHERE title=? AND target_id=? AND deleted_at IS NULL LIMIT 1');
     $duplicate->execute([$title, (int)$target['id']]);
