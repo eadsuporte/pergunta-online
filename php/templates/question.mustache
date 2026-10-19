@@ -33,6 +33,7 @@
     <section class="answer">
         <div class="eyebrow">RESPOSTA REGISTRADA</div>
         <p>{{{answer_html}}}</p>
+        {{#answered_by_name}}<small>Respondida por <strong>{{answered_by_name}}</strong></small>{{/answered_by_name}}
         {{#answered_at}}<small>Registrada em {{answered_at}}</small>{{/answered_at}}
     </section>
     {{/has_answer}}

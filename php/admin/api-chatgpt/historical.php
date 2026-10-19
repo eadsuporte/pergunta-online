@@ -170,7 +170,8 @@ function api_question_answer(array $input, array $actor): array {
         throw new InvalidArgumentException('Pergunta não encontrada.');
     }
     if ($question['status'] === 'answered' && trim((string)$question['answer_text']) !== '') {
-        if (trim((string)$question['answer_text']) === $answer) {
+        if (trim((string)$question['answer_text']) === $answer
+            && !api_bool($input['replace_existing'] ?? null, false)) {
             return [
                 'question_id' => $questionId, 'changed' => false,
                 'answered_by_user_id' => $question['answered_by'] !== null ? (int)$question['answered_by'] : null,

@@ -14,11 +14,13 @@ $viewerId = (int)($viewer['id'] ?? 0);
 $isAdmin = (int)(($viewer['role'] ?? '') === 'admin');
 
 $stmt = db()->prepare("
-    SELECT q.*,u.name author_name,dq.title duplicate_title,taker.name taken_by_name
+    SELECT q.*,u.name author_name,dq.title duplicate_title,taker.name taken_by_name,
+           answerer.name answered_by_name
     FROM questions q
     JOIN users u ON u.id=q.user_id
     LEFT JOIN questions dq ON dq.id=q.duplicate_of
     LEFT JOIN users taker ON taker.id=q.taken_by
+    LEFT JOIN users answerer ON answerer.id=q.answered_by
     WHERE q.id=? AND q.deleted_at IS NULL
       AND (q.published=1 OR q.user_id=? OR ?=1)
     LIMIT 1
@@ -113,6 +115,7 @@ render_page('question', [
     'has_answer' => !empty($question['answer_text']),
     'answer_html' => !empty($question['answer_text']) ? nl2br(h((string)$question['answer_text'])) : '',
     'answered_at' => !empty($question['answered_at']) ? date('d/m/Y H:i', strtotime((string)$question['answered_at'])) : '',
+    'answered_by_name' => (string)($question['answered_by_name'] ?? ''),
     'evidence' => $evidence,
     'has_evidence' => $evidence !== [],
     'history' => $history,
