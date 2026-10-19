@@ -12,7 +12,21 @@ $error = '';
 
 $focuses = db()->query('SELECT id,name,abbr FROM focuses WHERE active=1 ORDER BY name')->fetchAll();
 $categories = db()->query('SELECT id,name FROM categories WHERE active=1 ORDER BY name')->fetchAll();
-$targets = db()->query('SELECT id,name FROM targets WHERE active=1 ORDER BY name')->fetchAll();
+$targetRows = db()->query("
+    SELECT t.id,t.name,tf.focus_id
+      FROM targets t
+      JOIN target_focuses tf ON tf.target_id=t.id
+     WHERE t.active=1
+     ORDER BY t.name,tf.focus_id
+")->fetchAll();
+$targets = [];
+foreach ($targetRows as $row) {
+    $id = (int)$row['id'];
+    if (!isset($targets[$id])) {
+        $targets[$id] = ['id' => $id, 'name' => (string)$row['name'], 'focus_ids' => []];
+    }
+    $targets[$id]['focus_ids'][] = (int)$row['focus_id'];
+}
 
 $focusId = (int)Request::post('focus_id', Request::INT, 0);
 $categoryId = (int)Request::post('category_id', Request::INT, 0);
@@ -29,8 +43,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $categoryStmt = db()->prepare('SELECT id,name FROM categories WHERE id=? AND active=1');
     $categoryStmt->execute([$categoryId]);
     $category = $categoryStmt->fetch();
-    $targetStmt = db()->prepare('SELECT id,name FROM targets WHERE id=? AND active=1');
-    $targetStmt->execute([$targetId]);
+    $targetStmt = db()->prepare("
+        SELECT t.id,t.name
+          FROM targets t
+          JOIN target_focuses tf ON tf.target_id=t.id
+         WHERE t.id=? AND tf.focus_id=? AND t.active=1
+    ");
+    $targetStmt->execute([$targetId, $focusId]);
     $target = $targetStmt->fetch();
 
     if (!$focus || !$category || !$target) {
@@ -83,8 +102,9 @@ $categoryContext = array_map(static fn(array $row): array => [
 $targetContext = array_map(static fn(array $row): array => [
     'id' => (int)$row['id'],
     'name' => (string)$row['name'],
+    'focus_ids' => implode(',', $row['focus_ids']),
     'selected' => (int)$row['id'] === $targetId,
-], $targets);
+], array_values($targets));
 
 $ready = $focusContext !== [] && $categoryContext !== [] && $targetContext !== [];
 render_page('ask', [
