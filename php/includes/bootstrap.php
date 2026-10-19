@@ -211,5 +211,6 @@ function audit_log(?int $adminUserId, string $action, string $entityType, ?int $
 }
 
 require_once __DIR__ . '/questions.php';
+require_once __DIR__ . '/comments.php';
 require_once __DIR__ . '/evidence.php';
 require_once __DIR__ . '/blog.php';

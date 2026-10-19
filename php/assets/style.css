@@ -229,3 +229,23 @@ body.admin-layout{
 .target-focuses-options label{display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer}
 .target-focuses-options input[type=checkbox]{width:auto;margin:0;accent-color:var(--accent)}
 .target-focuses .muted{font-size:12px;margin:10px 0 0}
+
+
+/* Public discussion below question details. */
+.question-comments{border-top:1px solid var(--line);margin-top:28px;padding-top:24px}
+.question-comments-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.question-comments-head h2{font-size:22px;margin:6px 0 0;letter-spacing:-.03em}
+.question-comments-head h2 span{color:var(--muted);font-size:16px}
+.question-comments-head small,.question-comment-top time{font-size:11px;color:var(--muted)}
+.question-comments-list{display:grid;gap:12px;margin-bottom:20px}
+.question-comment{border:1px solid var(--line);background:var(--surface2);border-radius:14px;padding:14px 16px}
+.question-comment-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px}
+.question-comment-top strong{font-weight:900}
+.comment-guest-label{display:inline-block;font-size:10px;color:var(--muted);margin-left:5px}
+.question-comment p{font-size:13px;line-height:1.6;margin:10px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.question-comment-form{border-top:1px solid var(--line);padding-top:20px;margin-top:20px}
+.question-comment-form h3{font-size:17px;margin:0}
+.question-comment-form .muted{margin:0}
+.question-comment-form textarea{resize:vertical}
+.comment-delete-form{margin-top:10px}
+.comment-honeypot{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}

@@ -71,6 +71,59 @@
     </section>
     {{/has_history}}
 
+    <section class="question-comments" id="comments">
+        <div class="question-comments-head">
+            <div>
+                <div class="eyebrow">CONVERSA DA COMUNIDADE</div>
+                <h2>Comentários <span>({{comment_count}})</span></h2>
+            </div>
+            <small>Comentários não são respostas oficiais.</small>
+        </div>
+
+        {{#has_comments}}
+        <div class="question-comments-list">
+            {{#comments}}
+            <article class="question-comment">
+                <div class="question-comment-top">
+                    <div><strong>{{author}}</strong>{{#is_guest}} <span class="comment-guest-label">Visitante</span>{{/is_guest}}</div>
+                    <time>{{created_at}}</time>
+                </div>
+                <p>{{body}}</p>
+                {{#can_delete}}
+                <form method="post" action="{{comment_action_url}}" class="comment-delete-form">
+                    <input type="hidden" name="csrf_token" value="{{csrf_token}}">
+                    <input type="hidden" name="action" value="delete_comment">
+                    <input type="hidden" name="comment_id" value="{{id}}">
+                    <button type="submit" class="button ghost small">Remover comentário</button>
+                </form>
+                {{/can_delete}}
+            </article>
+            {{/comments}}
+        </div>
+        {{/has_comments}}
+        {{^has_comments}}
+        <p class="muted">Ainda não há comentários. Inicie a conversa.</p>
+        {{/has_comments}}
+        {{#comments_open}}
+        <form method="post" action="{{comment_action_url}}" class="admin-stack-form question-comment-form">
+            <h3>Deixe seu comentário</h3>
+            <input type="hidden" name="csrf_token" value="{{csrf_token}}">
+            <input type="hidden" name="action" value="add_comment">
+            {{#comment_guest}}
+            <label><span>Seu nome</span><input name="guest_name" maxlength="120" autocomplete="name" required></label>
+            {{/comment_guest}}
+            {{#comment_logged_in}}
+            <p class="muted">Comentando como <strong>{{comment_current_name}}</strong>.</p>
+            {{/comment_logged_in}}
+            <label><span>Comentário</span><textarea name="body" rows="4" maxlength="2000" minlength="2" required></textarea></label>
+            <div class="comment-honeypot" aria-hidden="true">
+                <label>Website <input name="website" tabindex="-1" autocomplete="off"></label>
+            </div>
+            <button class="button primary" type="submit">Publicar comentário</button>
+        </form>
+        {{/comments_open}}
+    </section>
+
     {{#can_report}}
     <details class="question-report">
         <summary>Denunciar esta pergunta</summary>

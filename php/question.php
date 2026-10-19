@@ -34,6 +34,52 @@ if (!$question) {
     exit;
 }
 
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_csrf();
+    $action = (string)Request::post('action', Request::STRING, '');
+
+    if ($action === 'add_comment') {
+        if ((int)$question['published'] !== 1) {
+            http_response_code(403);
+            exit('Esta pergunta não está disponível para comentários.');
+        }
+
+        // A hidden field catches simple automated form submissions.
+        if (trim((string)Request::post('website', Request::STRING, '')) === '') {
+            try {
+                question_comment_create(
+                    $id,
+                    $viewer,
+                    (string)Request::post('guest_name', Request::STRING, ''),
+                    (string)Request::post('body', Request::STRING, '')
+                );
+                flash('success', 'Comentário publicado.');
+            } catch (InvalidArgumentException $e) {
+                flash('error', $e->getMessage());
+            }
+        }
+        redirect('question?id=' . $id . '#comments');
+    }
+
+    if ($action === 'delete_comment') {
+        if (!$isAdmin) {
+            http_response_code(403);
+            exit('Apenas administradores podem remover comentários.');
+        }
+        $commentId = (int)Request::post('comment_id', Request::INT, 0);
+        if (question_comment_delete($id, $commentId, $viewerId)) {
+            flash('success', 'Comentário removido.');
+        } else {
+            flash('error', 'Comentário não encontrado.');
+        }
+        redirect('question?id=' . $id . '#comments');
+    }
+
+    http_response_code(400);
+    exit('Ação de comentário inválida.');
+}
+
 $showSilence = in_array((string)$question['status'], ['waiting', 'answered'], true) && !empty($question['waiting_since']);
 $silenceDays = 0;
 if ($showSilence) {
@@ -89,6 +135,27 @@ if ($viewer && ($viewer['role'] ?? '') === 'admin') {
     $canRespond = (bool)$respondent->fetchColumn();
 }
 
+$commentsStmt = db()->prepare("
+    SELECT c.id,c.user_id,c.guest_name,c.body,c.created_at,u.name user_name
+    FROM question_comments c
+    LEFT JOIN users u ON u.id=c.user_id
+    WHERE c.question_id=? AND c.deleted_at IS NULL
+    ORDER BY c.created_at DESC,c.id DESC
+    LIMIT 100
+");
+$commentsStmt->execute([$id]);
+$comments = array_map(static fn(array $row): array => [
+    'id' => (int)$row['id'],
+    'author' => (string)($row['user_name'] ?? $row['guest_name'] ?? 'Visitante'),
+    'is_guest' => empty($row['user_id']),
+    'body' => (string)$row['body'],
+    'created_at' => date('d/m/Y H:i', strtotime((string)$row['created_at'])),
+    'can_delete' => (bool)$isAdmin,
+], $commentsStmt->fetchAll());
+$countStmt = db()->prepare('SELECT COUNT(*) FROM question_comments WHERE question_id=? AND deleted_at IS NULL');
+$countStmt->execute([$id]);
+$commentCount = (int)$countStmt->fetchColumn();
+
 $duplicateUrl = '';
 if (!empty($question['duplicate_of'])) {
     $duplicateUrl = base_url('question?id=' . (int)$question['duplicate_of']);
@@ -122,6 +189,14 @@ render_page('question', [
     'has_history' => $history !== [],
     'can_respond' => $canRespond,
     'respond_url' => base_url('respond?id=' . $id),
+    'comments' => $comments,
+    'comment_count' => $commentCount,
+    'has_comments' => $comments !== [],
+    'comments_open' => (int)$question['published'] === 1,
+    'comment_guest' => $viewer === null,
+    'comment_logged_in' => $viewer !== null,
+    'comment_current_name' => (string)($viewer['name'] ?? ''),
+    'comment_action_url' => base_url('question?id=' . $id),
     'can_report' => $viewer !== null && (int)$question['published'] === 1,
     'report_url' => base_url('report'),
     'is_duplicate' => !empty($question['duplicate_of']),

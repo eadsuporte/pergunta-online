@@ -79,7 +79,7 @@ function template_base_context(string $title = APP_NAME, bool $admin = false): a
         'page_title' => $title === APP_NAME ? $siteName : $title . ' · ' . $siteName,
         'site_name' => $siteName,
         'registration_enabled' => !$installed || app_setting('registration_enabled', '1') === '1',
-        'stylesheet_url' => base_url('assets/style.css') . '?v=' . APP_VERSION,
+        'stylesheet_url' => base_url('assets/style.css') . '?v=' . (string)(filemtime(dirname(__DIR__) . '/assets/style.css') ?: APP_VERSION),
         'home_url' => base_url('/'),
         'blog_url' => base_url('blog/'),
         'post_fallback_image_url' => blog_fallback_image_url(),

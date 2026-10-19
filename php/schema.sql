@@ -136,6 +136,24 @@ CREATE TABLE IF NOT EXISTS question_history (
     CONSTRAINT fk_question_history_actor FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS question_comments (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    question_id BIGINT UNSIGNED NOT NULL,
+    user_id BIGINT UNSIGNED NULL,
+    guest_name VARCHAR(120) NULL,
+    body TEXT NOT NULL,
+    ip_hash CHAR(64) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
+    deleted_by BIGINT UNSIGNED NULL,
+    INDEX idx_comments_question (question_id,deleted_at,created_at,id),
+    INDEX idx_comments_guest_rate (ip_hash,created_at),
+    INDEX idx_comments_user_rate (user_id,created_at),
+    CONSTRAINT fk_comments_question FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE,
+    CONSTRAINT fk_comments_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_comments_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS question_evidence (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     question_id BIGINT UNSIGNED NOT NULL,
@@ -251,7 +269,7 @@ INSERT IGNORE INTO app_settings (setting_key,setting_value) VALUES
 ('site_name','Pergunta.Online'),
 ('max_questions_per_page','50');
 
-INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','9')
+INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','10')
 ON DUPLICATE KEY UPDATE meta_value=VALUES(meta_value);
 
 CREATE TABLE IF NOT EXISTS login_attempts (
