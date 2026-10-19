@@ -361,6 +361,32 @@ function run_schema_migrations(PDO $pdo): void {
         $version = 8;
     }
 
+    if ($version < 9) {
+        // A target may serve multiple focuses. Preserve relationships from existing questions.
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS target_focuses (
+                target_id BIGINT UNSIGNED NOT NULL,
+                focus_id BIGINT UNSIGNED NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (target_id,focus_id),
+                INDEX idx_target_focuses_focus (focus_id,target_id),
+                CONSTRAINT fk_target_focuses_target FOREIGN KEY (target_id) REFERENCES targets(id) ON DELETE CASCADE,
+                CONSTRAINT fk_target_focuses_focus FOREIGN KEY (focus_id) REFERENCES focuses(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+        $pdo->exec("
+            INSERT IGNORE INTO target_focuses (target_id,focus_id)
+            SELECT DISTINCT q.target_id,q.focus_id
+              FROM questions q
+              JOIN targets t ON t.id=q.target_id
+              JOIN focuses f ON f.id=q.focus_id
+             WHERE q.target_id IS NOT NULL AND q.focus_id IS NOT NULL
+        ");
+        $pdo->exec("INSERT INTO app_meta (meta_key,meta_value) VALUES ('schema_version','9')
+            ON DUPLICATE KEY UPDATE meta_value=VALUES(meta_value)");
+        $version = 9;
+    }
+
 }
 
 function migration_add_column(PDO $pdo, string $table, string $column, string $definition): void {
