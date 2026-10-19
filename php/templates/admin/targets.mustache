@@ -4,7 +4,7 @@
     <div>
         <div class="eyebrow">DESTINATÁRIOS</div>
         <h1>Quem deve responder</h1>
-        <p class="muted">Cadastre organizações, áreas ou pessoas e vincule contas respondentes autorizadas a falar em nome delas.</p>
+        <p class="muted">Cadastre organizações, áreas ou pessoas, vincule os focos sobre os quais podem responder e associe contas autorizadas.</p>
     </div>
 </section>
 
@@ -19,6 +19,13 @@
             <label><span>E-mail de contato</span><input type="email" name="contact_email" maxlength="190"></label>
         </div>
         <label><span>Descrição</span><textarea name="description" rows="3"></textarea></label>
+        <fieldset class="target-focuses">
+            <legend>Focos atendidos</legend>
+            <div class="target-focuses-options">
+                {{#new_focus_options}}<label><input type="checkbox" name="focus_ids[]" value="{{id}}"><span>{{label}}</span></label>{{/new_focus_options}}
+            </div>
+            <p class="muted">O destinatário só aparecerá em /ask quando o foco escolhido estiver marcado.</p>
+        </fieldset>
         <button class="button primary" type="submit">Adicionar destinatário</button>
     </form>
 </section>
@@ -46,6 +53,13 @@
             <label><span>E-mail</span><input type="email" name="contact_email" value="{{contact_email}}" maxlength="190"></label>
         </div>
         <label><span>Descrição</span><textarea name="description" rows="3">{{description}}</textarea></label>
+        <fieldset class="target-focuses">
+            <legend>Focos atendidos</legend>
+            <div class="target-focuses-options">
+                {{#focus_options}}<label><input type="checkbox" name="focus_ids[]" value="{{id}}" {{#checked}}checked{{/checked}}><span>{{label}}</span></label>{{/focus_options}}
+            </div>
+            <p class="muted">O destinatário só aparecerá em /ask quando o foco escolhido estiver marcado.</p>
+        </fieldset>
         <button class="button ghost small" type="submit">Salvar dados</button>
     </form>
 
