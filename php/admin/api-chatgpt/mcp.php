@@ -181,7 +181,7 @@ function mcp_tools(): array {
             "type" => "object", "required" => ["question_id", "user_id", "body"], "properties" => [
                 "question_id" => ["type" => "integer", "minimum" => 1],
                 "user_id" => ["type" => "integer", "minimum" => 1],
-                "body" => ["type" => "string", "minLength" => 2, "maxLength" => 5000],
+                "body" => ["type" => "string", "minLength" => 2, "maxLength" => 2000],
                 "created_at" => $text, "external_id" => $text,
             ],
         ], false),
