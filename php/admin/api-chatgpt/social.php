@@ -68,7 +68,7 @@ function api_vote_question(array $input, array $actor): array {
 function api_comment_question(array $input, array $actor): array {
     $questionId = (int)($input['question_id'] ?? 0);
     $userId = (int)($input['user_id'] ?? 0);
-    [, $body] = question_comment_validate(['id' => $userId], '', (string)($input['body'] ?? ''));
+    $body = question_comment_validate(['id' => $userId], (string)($input['body'] ?? ''));
     $externalId = api_string($input['external_id'] ?? '', 'external_id', 0, 190);
     if ($questionId < 1 || $userId < 1) {
         throw new InvalidArgumentException('question_id e user_id devem ser positivos.');
