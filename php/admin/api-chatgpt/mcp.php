@@ -264,8 +264,8 @@ if ($rpcMethod === "tools/call") {
     if ($tool === null) {
         mcp_rpc_error($id, -32602, "Unknown tool.");
     }
-    $userTool = in_array($name, ["search_users", "create_user", "update_user_profile"], true);
-    $scope = $userTool ? "users:write" : ($tool["annotations"]["readOnlyHint"] ? "questions:read" : "questions:write");
+    $userWriteTool = in_array($name, ["create_user", "update_user_profile"], true);
+    $scope = $userWriteTool ? "users:write" : ($tool["annotations"]["readOnlyHint"] ? "questions:read" : "questions:write");
     $actor = mcp_oauth_actor($scope);
     try {
         $data = mcp_execute_tool($name, $args, $actor);
