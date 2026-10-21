@@ -412,22 +412,7 @@ function api_question_create(array $input, array $actor): array {
         if (!in_array($status, $allowedStatus, true)) {
             throw new InvalidArgumentException('status inválido.');
         }
-
-        $defaultPublish = app_setting('auto_publish_questions', '1') === '1';
-        $published = api_bool($input['published'] ?? null, $defaultPublish);
-        $moderation = strtolower(api_string(
-            $input['moderation_status'] ?? ($published ? 'approved' : 'pending'),
-            'moderation_status',
-            1,
-            20
-        ));
-        if (!in_array($moderation, ['pending', 'approved', 'rejected'], true)) {
-            throw new InvalidArgumentException('moderation_status inválido.');
-        }
-        if ($moderation !== 'approved') {
-            $published = false;
-        }
-
+        
         $answer = api_string($input['answer_text'] ?? '', 'answer_text');
         if ($status === 'answered' && $answer === '') {
             throw new InvalidArgumentException('answer_text é obrigatório quando status=answered.');
