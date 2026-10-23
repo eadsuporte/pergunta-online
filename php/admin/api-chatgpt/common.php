@@ -413,6 +413,25 @@ function api_question_create(array $input, array $actor): array {
             throw new InvalidArgumentException('status inválido.');
         }
         
+        // Resolve moderation and publication from MCP/REST input before the INSERT.
+        // An explicit moderation state takes precedence over automatic publication.
+        $autoPublish = app_setting('auto_publish_questions', '1') === '1';
+        $moderation = array_key_exists('moderation_status', $input)
+            ? $input['moderation_status']
+            : ($autoPublish ? 'approved' : 'pending');
+        if (!is_string($moderation) || !in_array($moderation, ['pending', 'approved', 'rejected'], true)) {
+            throw new InvalidArgumentException('moderation_status inválido.');
+        }
+        $published = array_key_exists('published', $input)
+            ? $input['published']
+            : ($moderation === 'approved');
+        if (!is_bool($published)) {
+            throw new InvalidArgumentException('published precisa ser booleano.');
+        }
+        if ($published && $moderation !== 'approved') {
+            throw new InvalidArgumentException('Uma pergunta não aprovada não pode ser publicada.');
+        }
+
         $answer = api_string($input['answer_text'] ?? '', 'answer_text');
         if ($status === 'answered' && $answer === '') {
             throw new InvalidArgumentException('answer_text é obrigatório quando status=answered.');
